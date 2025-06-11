@@ -1,138 +1,129 @@
-// server.js - CRITICAL RE-CONFIRMED VERSION: Firebase Firestore Integration
-// This version ensures users and books are stored in your Firestore database.
-// - Users can sign up and log in.
-// - All uploaded books are publicly visible on the homepage.
-// - Uploading and downloading books require a user to be logged in.
-// - Prevents duplicate book uploads (same name and author).
+// server.js - UPDATED: Firebase Storage Integration
+// This version uploads and serves book files directly from Firebase Storage.
+// - Files are no longer saved locally on the server.
+// - Frontend UI and interaction logic remain unchanged.
 
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs'); // Still needed for existsSync for initial checks if needed, but not for file writes/reads directly
 const cors = require('cors');
-const crypto = require('crypto'); // Node.js built-in module for cryptographic functions
+const crypto = require('crypto');
 
 // --- Firebase Admin SDK Setup ---
 const admin = require('firebase-admin');
 
-// IMPORTANT: This line uses the serviceAccountKey.json file you just placed.
-// Ensure the file is named 'serviceAccountKey.json' and is in the same directory as server.js.
-const serviceAccount = require('./serviceAccountKey.json'); 
+// --- MODIFIED SECTION for Firebase Credentials ---
+// This block dynamically loads Firebase credentials:
+// 1. First, it tries to get the credentials from the GOOGLE_APPLICATION_CREDENTIALS_JSON
+//    environment variable (which you set on Render). This is the secure way for production.
+// 2. If the environment variable is not set (e.g., during local development),
+//    it falls back to trying to load from the local 'serviceAccountKey.json' file.
+//    A warning is logged in this case.
+let serviceAccount;
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+    try {
+        serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+    } catch (e) {
+        console.error("Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON:", e);
+        // It's critical to exit if environment variable is malformed in production
+        process.exit(1); 
+    }
+} else {
+    // This 'else' block is primarily for local development.
+    // In production (on Render), the GOOGLE_APPLICATION_CREDENTIALS_JSON env var should always be set.
+    try {
+        serviceAccount = require("./serviceAccountKey.json");
+        console.warn("Using local serviceAccountKey.json. Remember to set GOOGLE_APPLICATION_CREDENTIALS_JSON in production environments.");
+    } catch (e) {
+        console.error("Firebase service account credentials not found. Neither GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable nor local serviceAccountKey.json found. Exiting.");
+        // Exit if credentials are not found in either place
+        process.exit(1); 
+    }
+}
+// --- END OF MODIFIED SECTION ---
 
-// Initialize Firebase Admin SDK with your service account credentials
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+    credential: admin.credential.cert(serviceAccount)
+    // databaseURL is often included here for Realtime Database.
+    // If you are only using Firestore, it might not be strictly necessary,
+    // or you can set it to your project's URL like:
+    // databaseURL: "https://my-merafe-books.firebaseio.com"
 });
 
-const db = admin.firestore(); // Get a reference to the Firestore database service
+const db = admin.firestore(); // Firestore instance
+// Note: Ensure your Firebase Storage rules are configured to allow public read/write
+// or authenticated access as per your app's requirements.
+const bucket = admin.storage().bucket(); // Get a reference to the Firebase Storage bucket
 
 // --- Express App Setup ---
 const app = express();
+// PORT is now correctly set to use Render's environment variable or fallback to 3000 for local development.
 const PORT = process.env.PORT || 3000;
 
-app.use(cors()); // Enable CORS for cross-origin requests from your frontend
-app.use(express.static('public')); // Serve static files (like index.html, auth.html, CSS, JS) from the 'public' directory
+app.use(cors()); // Enable CORS
+app.use(express.static('public')); // Serve static files
 
-// --- File Upload Setup (Multer) ---
-const uploadsDir = path.join(__dirname, 'uploads');
-// Create the 'uploads' directory if it doesn't exist
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
-}
-app.use('/uploads', express.static(uploadsDir)); // Serve uploaded files statically via '/uploads/filename.ext' URL
-
-// Configure Multer for file storage
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadsDir); // Store files in the 'uploads' directory
-    },
-    filename: function (req, file, cb) {
-        // Generate a unique filename by prepending a timestamp to the original filename
-        cb(null, Date.now() + '-' + file.originalname);
-    }
-});
-
-const upload = multer({ storage: storage }).fields([
-    { name: 'coverImageFile', maxCount: 1 }, // Allow one cover image file
-    { name: 'pdfFile', maxCount: 1 }         // Allow one PDF file
+// --- Multer Configuration (for in-memory storage) ---
+// Files are temporarily stored in memory before uploading to Firebase Storage.
+const upload = multer({ storage: multer.memoryStorage() }).fields([
+    { name: 'coverImageFile', maxCount: 1 },
+    { name: 'pdfFile', maxCount: 1 }
 ]);
 
-app.use(express.json()); // Parse JSON request bodies
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded request bodies
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// --- In-memory Session Management ---
-// Stores active session tokens mapped to user IDs.
-// Note: This map is cleared when the server restarts. For persistent sessions,
-// a more robust solution (e.g., storing sessions in Firestore) would be needed.
+// --- In-memory Session Management (unchanged) ---
 const activeSessions = new Map(); // sessionId -> userId
 
-// --- Authentication Middleware ---
-// This middleware checks if a request is authenticated by validating the
-// 'x-auth-token' header sent by the client.
+// --- Authentication Middleware (unchanged) ---
 const isAuthenticated = async (req, res, next) => {
-    const authToken = req.headers['x-auth-token']; // Get the authentication token from the request headers
+    const authToken = req.headers['x-auth-token'];
 
     if (!authToken) {
-        // If no token is provided, the request is unauthorized
         return res.status(401).json({ message: 'Unauthorized: No authentication token provided.' });
     }
 
-    const userId = activeSessions.get(authToken); // Retrieve the userId associated with the token from active sessions map
+    const userId = activeSessions.get(authToken);
 
     if (!userId) {
-        // If the token is not found in active sessions, it's invalid or expired
         return res.status(401).json({ message: 'Unauthorized: Invalid or expired token.' });
     }
 
     try {
-        // Verify that the user associated with the token still exists in Firestore
-        // This is crucial for security and data integrity.
         const userDoc = await db.collection('users').doc(userId).get();
         if (!userDoc.exists) {
-            // If the user document doesn't exist (e.g., user deleted or database cleared),
-            // remove the session and return unauthorized.
-            activeSessions.delete(authToken); // Clean up the invalid session token
+            activeSessions.delete(authToken);
             return res.status(401).json({ message: 'Unauthorized: User associated with token not found.' });
         }
-        // Attach the user's data (including their Firestore ID) to the request for subsequent handlers
         req.user = { id: userId, ...userDoc.data() };
-        next(); // Proceed to the next middleware or route handler
+        next();
     } catch (error) {
         console.error('Error verifying user token with Firestore:', error);
         res.status(500).json({ message: 'Internal server error during authentication.' });
     }
 };
 
-// --- Authentication Routes ---
-
-// Signup Endpoint: Allows new users to register and saves to Firestore
+// --- Authentication Routes (unchanged) ---
 app.post('/api/signup', async (req, res) => {
     const { email, password, displayName } = req.body;
-
-    // Validate required fields
     if (!email || !password || !displayName) {
         return res.status(400).json({ message: 'All fields are required for signup.' });
     }
-
     try {
         const usersRef = db.collection('users');
-        // Check if a user with the provided email already exists in Firestore
         const snapshot = await usersRef.where('email', '==', email).get();
         if (!snapshot.empty) {
             return res.status(409).json({ message: 'User with this email already exists.' });
         }
-
-        // Add the new user's data to the 'users' collection in Firestore
-        // Firestore automatically generates a unique ID for new documents added this way.
         const newUserRef = await usersRef.add({
             email,
-            password, // Store password (insecure for production, hash using bcrypt in a real app!)
+            password,
             displayName,
-            createdAt: admin.firestore.FieldValue.serverTimestamp() // Firestore timestamp for creation
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
-        // This console log will now show the actual Firestore document ID
         console.log('New user signed up in Firestore with ID:', newUserRef.id);
-
         res.status(201).json({ message: 'Signup successful! Please log in.' });
     } catch (error) {
         console.error('Error during signup:', error);
@@ -140,44 +131,30 @@ app.post('/api/signup', async (req, res) => {
     }
 });
 
-// Login Endpoint: Authenticates existing users against Firestore
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
-
-    // Validate required fields
     if (!email || !password) {
         return res.status(400).json({ message: 'Email and password are required for login.' });
     }
-
     try {
         const usersRef = db.collection('users');
-        // Find the user by email in Firestore
         const snapshot = await usersRef.where('email', '==', email).get();
-
         if (snapshot.empty) {
-            // User not found
             return res.status(401).json({ message: 'Invalid email or password.' });
         }
-
         const userDoc = snapshot.docs[0];
         const userData = userDoc.data();
-
-        // Compare provided password with stored password
         if (userData.password !== password) {
             return res.status(401).json({ message: 'Invalid email or password.' });
         }
-
-        // Generate a unique session token for the authenticated user
         const sessionToken = crypto.randomUUID();
-        // Store the token and link it to the user's Firestore document ID
         activeSessions.set(sessionToken, userDoc.id);
-
         console.log('User logged in from Firestore:', userData.email, 'Session Token:', sessionToken);
         res.status(200).json({
             message: 'Login successful!',
-            userId: userDoc.id,       // Send the user's actual Firestore document ID
+            userId: userDoc.id,
             displayName: userData.displayName,
-            authToken: sessionToken   // Send the generated session token to the client
+            authToken: sessionToken
         });
     } catch (error) {
         console.error('Error during login:', error);
@@ -185,10 +162,35 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// --- Book Upload Endpoint: Saves book details to Firestore ---
-// This endpoint is protected by the `isAuthenticated` middleware.
+// --- Helper function to upload file to Firebase Storage ---
+async function uploadFileToFirebaseStorage(file, destinationFolder) {
+    const filename = `${destinationFolder}/${Date.now()}-${file.originalname}`;
+    const fileUpload = bucket.file(filename);
+    const blobStream = fileUpload.createWriteStream({
+        metadata: {
+            contentType: file.mimetype
+        }
+    });
+
+    return new Promise((resolve, reject) => {
+        blobStream.on('error', (error) => {
+            console.error('Error uploading to Firebase Storage:', error);
+            reject('Upload failed.');
+        });
+
+        blobStream.on('finish', async () => {
+            // Make the file publicly accessible
+            await fileUpload.makePublic();
+            const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileUpload.name}`;
+            resolve(publicUrl);
+        });
+
+        blobStream.end(file.buffer);
+    });
+}
+
+// --- Book Upload Endpoint: Saves book details to Firestore & files to Storage ---
 app.post('/upload-book', isAuthenticated, (req, res) => {
-    // Multer handles file uploads first
     upload(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
             console.error('Multer error during upload:', err);
@@ -202,13 +204,12 @@ app.post('/upload-book', isAuthenticated, (req, res) => {
         const coverImageFile = req.files && req.files['coverImageFile'] ? req.files['coverImageFile'][0] : null;
         const pdfFile = req.files && req.files['pdfFile'] ? req.files['pdfFile'][0] : null;
 
-        // Validate required book fields
         if (!bookName || !authorName || !genre || !bookDescription) {
-            // Clean up uploaded files if validation fails
-            if (coverImageFile && fs.existsSync(coverImageFile.path)) fs.unlinkSync(coverImageFile.path);
-            if (pdfFile && fs.existsSync(pdfFile.path)) fs.unlinkSync(pdfFile.path);
             return res.status(400).json({ message: 'Book name, author, genre, and description are required.' });
         }
+
+        let coverImageUrl = null;
+        let pdfDownloadUrl = null;
 
         try {
             // --- Duplicate Book Check against Firestore ---
@@ -219,10 +220,15 @@ app.post('/upload-book', isAuthenticated, (req, res) => {
                 .get();
 
             if (!existingBooksQuery.empty) {
-                // If a duplicate is found, delete the newly uploaded files to prevent clutter
-                if (coverImageFile && fs.existsSync(coverImageFile.path)) fs.unlinkSync(coverImageFile.path);
-                if (pdfFile && fs.existsSync(pdfFile.path)) fs.unlinkSync(pdfFile.path);
                 return res.status(409).json({ message: 'A book with this name and author already exists.' });
+            }
+
+            // Upload files to Firebase Storage
+            if (coverImageFile) {
+                coverImageUrl = await uploadFileToFirebaseStorage(coverImageFile, 'covers');
+            }
+            if (pdfFile) {
+                pdfDownloadUrl = await uploadFileToFirebaseStorage(pdfFile, 'pdfs');
             }
 
             // Prepare new book data to be saved in Firestore
@@ -231,15 +237,13 @@ app.post('/upload-book', isAuthenticated, (req, res) => {
                 authorName,
                 genre,
                 bookDescription,
-                coverImagePath: coverImageFile ? coverImageFile.path : null, // Store local path
-                pdfPath: pdfFile ? pdfFile.path : null,                     // Store local path
-                uploadedByUserId: req.user.id,                               // ID of the user who uploaded
-                uploadedAt: admin.firestore.FieldValue.serverTimestamp()     // Timestamp
+                coverImageUrl: coverImageUrl, // Store Firebase Storage public URL
+                pdfDownloadUrl: pdfDownloadUrl, // Store Firebase Storage public URL
+                uploadedByUserId: req.user.id,
+                uploadedAt: admin.firestore.FieldValue.serverTimestamp()
             };
 
-            // Add the new book document to the 'books' collection in Firestore
             const docRef = await db.collection('books').add(newBookData);
-            // This console log will now show the actual Firestore document ID
             console.log('New book added to Firestore with ID:', docRef.id);
 
             res.status(200).json({
@@ -247,34 +251,29 @@ app.post('/upload-book', isAuthenticated, (req, res) => {
                 book: { id: docRef.id, ...newBookData }
             });
         } catch (error) {
-            console.error('Error saving book to Firestore:', error);
-            // Clean up uploaded files in case of a database error after successful file upload
-            if (coverImageFile && fs.existsSync(coverImageFile.path)) fs.unlinkSync(coverImageFile.path);
-            if (pdfFile && fs.existsSync(pdfFile.path)) fs.unlinkSync(pdfFile.path);
-            res.status(500).json({ message: 'Failed to save book data to database.' });
+            console.error('Error during book upload to storage or Firestore:', error);
+            res.status(500).json({ message: 'Failed to upload book data or files.' });
         }
     });
 });
 
 // --- Get All Books Endpoint: Fetches books from Firestore ---
-// This endpoint retrieves all books from Firestore for public display.
 app.get('/api/books', async (req, res) => {
     try {
         let booksQuery = db.collection('books');
-        // Fetch all books, ordered by upload time (newest first)
         const snapshot = await booksQuery.orderBy('uploadedAt', 'desc').get();
         const books = [];
         snapshot.forEach(doc => {
             const data = doc.data();
             books.push({
-                id: doc.id, // This will be the actual Firestore document ID
+                id: doc.id,
                 bookName: data.bookName,
                 authorName: data.authorName,
                 genre: data.genre,
                 bookDescription: data.bookDescription,
-                coverImageUrl: data.coverImagePath ? `/uploads/${path.basename(data.coverImagePath)}` : null,
-                pdfDownloadUrl: data.pdfPath ? `/download-book/${doc.id}` : null,
-                uploadedByUserId: data.uploadedByUserId // This will be the actual Firestore user ID
+                coverImageUrl: data.coverImageUrl, // Now directly the public URL from Firestore
+                pdfDownloadUrl: data.pdfDownloadUrl, // Now directly the public URL from Firestore
+                uploadedByUserId: data.uploadedByUserId
             });
         });
         console.log('Fetched ALL books from Firestore for public view. Number of books:', books.length);
@@ -285,33 +284,25 @@ app.get('/api/books', async (req, res) => {
     }
 });
 
-// --- Book Download Endpoint: Fetches PDF path from Firestore ---
-// This endpoint allows authenticated users to download a book's PDF.
+// --- Book Download Endpoint: Redirects to Firebase Storage URL ---
+// Frontend will now directly use the pdfDownloadUrl provided by /api/books
+// This endpoint might become redundant if all PDFs are public, but we keep it
+// for consistency and potential future signed URL use if files become private.
 app.get('/download-book/:bookId', isAuthenticated, async (req, res) => {
-    const bookId = req.params.bookId; // The bookId is the Firestore document ID
+    const bookId = req.params.bookId;
 
     try {
-        // Retrieve book details from Firestore using the document ID
         const bookDoc = await db.collection('books').doc(bookId).get();
         if (!bookDoc.exists) {
             return res.status(404).json({ message: 'Book not found.' });
         }
 
         const book = bookDoc.data();
-        const filePath = book.pdfPath; // Get the local file path from Firestore data
+        const pdfUrl = book.pdfDownloadUrl; // Get the Firebase Storage public URL
 
-        // Check if the file exists on the server's file system
-        if (filePath && fs.existsSync(filePath)) {
-            // `res.download` sends the file as a download to the client
-            res.download(filePath, book.bookName + '.pdf', (err) => {
-                if (err) {
-                    console.error('Error downloading file:', err);
-                    // Only send error if headers haven't already been sent
-                    if (!res.headersSent) {
-                        res.status(500).json({ message: 'Could not download the book.' });
-                    }
-                }
-            });
+        if (pdfUrl) {
+            // Redirect the client to the public URL of the PDF in Firebase Storage
+            res.redirect(pdfUrl);
         } else {
             res.status(404).json({ message: 'PDF file not found for this book.' });
         }
@@ -321,10 +312,53 @@ app.get('/download-book/:bookId', isAuthenticated, async (req, res) => {
     }
 });
 
+// --- DELETE Book Endpoint ---
+app.delete('/api/books/:bookId', isAuthenticated, async (req, res) => {
+    const bookId = req.params.bookId;
+    const userId = req.user.id; // User ID from authenticated token
+
+    try {
+        const bookRef = db.collection('books').doc(bookId);
+        const bookDoc = await bookRef.get();
+
+        if (!bookDoc.exists) {
+            return res.status(404).json({ message: 'Book not found.' });
+        }
+
+        const bookData = bookDoc.data();
+
+        // Ensure only the uploader can delete their own book
+        if (bookData.uploadedByUserId !== userId) {
+            return res.status(403).json({ message: 'Forbidden: You can only delete your own books.' });
+        }
+
+        // Delete the associated files from Firebase Storage
+        if (bookData.coverImageUrl) {
+            const coverFileName = bookData.coverImageUrl.split('/').pop(); // Get filename from URL
+            const coverFileRef = bucket.file(`covers/${coverFileName}`); // Construct storage path
+            await coverFileRef.delete().catch(err => console.warn('Warning: Could not delete cover image from storage:', err.message)); // Log warning if delete fails
+        }
+        if (bookData.pdfDownloadUrl) {
+            const pdfFileName = bookData.pdfDownloadUrl.split('/').pop(); // Get filename from URL
+            const pdfFileRef = bucket.file(`pdfs/${pdfFileName}`); // Construct storage path
+            await pdfFileRef.delete().catch(err => console.warn('Warning: Could not delete PDF from storage:', err.message)); // Log warning if delete fails
+        }
+
+        // Delete the book document from Firestore
+        await bookRef.delete();
+        console.log('Book deleted from Firestore:', bookId);
+
+        res.status(200).json({ message: 'Book deleted successfully!' });
+    } catch (error) {
+        console.error('Error deleting book from Firestore or Storage:', error);
+        res.status(500).json({ message: 'Internal server error during book deletion.' });
+    }
+});
+
+
 // --- Start the Server ---
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
-    console.log('Firestore integration enabled and ALL books are publicly displayed.');
-    console.log('***IMPORTANT: Ensure your "serviceAccountKey.json" file is in the same directory as server.js.***');
-    console.log('***Expected Firestore IDs for users and books will be long alphanumeric strings, not simple numbers.***');
+    console.log('Firebase Storage integrated. Files will be stored in Google Cloud Storage.');
+    console.log('***IMPORTANT: Ensure your "serviceAccountKey.json" is correct and Firebase Storage rules allow access.***');
 });
