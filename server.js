@@ -1,6 +1,7 @@
-// server.js - FINAL PRODUCTION VERSION: Firebase Storage & Environment Variable Integration
-// This version securely loads Firebase credentials from an environment variable
-// and uses Firebase Storage for file uploads (covers & PDFs).
+// server.js - FINAL PRODUCTION VERSION (v2): Firebase Storage & Environment Variable Integration
+// This version securely loads Firebase credentials from an environment variable,
+// uses Firebase Storage for file uploads (covers & PDFs), and explicitly
+// configures the storage bucket name.
 
 const express = require('express');
 const multer = require('multer');
@@ -36,10 +37,12 @@ if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
 // --- END CRITICAL SECTION ---
 
 admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-    // Note: If you use Firebase Realtime Database, ensure you set databaseURL here.
+    credential: admin.credential.cert(serviceAccount),
+    // IMPORTANT: Specify your Firebase Storage bucket name here.
+    // It's typically your Project ID followed by '.appspot.com'.
+    storageBucket: 'my-merafe-books.appspot.com' // <--- THIS LINE IS THE KEY NEW ADDITION!
+    // If you use Firebase Realtime Database, ensure you set databaseURL here.
     // E.g., databaseURL: "https://my-merafe-books.firebaseio.com"
-    // For Firestore and Storage, it's often not strictly required.
 });
 
 const db = admin.firestore(); // Get a reference to the Firestore database service
