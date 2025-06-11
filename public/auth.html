@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64," />
+    <link rel="stylesheet" href="auth.css">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  </head>
+  <body>
+    <div class="relative flex size-full min-h-screen flex-col bg-white group/design-root overflow-x-hidden">
+      <div class="layout-container flex h-full grow flex-col">
+        <header class="flex items-center justify-between whitespace-nowrap px-10 py-3">
+          <div class="flex items-center gap-8">
+            <div class="flex items-center gap-4 text-[#141414]">
+              <div class="size-6">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                </svg>
+              </div>
+              <span class="text-lg font-bold">ምእራፍ</span>
+            </div>
+            <nav class="flex gap-6">
+              <a class="text-[#141414] text-base font-normal leading-normal" href="index.html">
+                Home
+              </a>
+            </nav>
+          </div>
+          <div class="flex flex-1 justify-end gap-8">
+            <button id="theme-toggle" class="p-2 rounded-full bg-[#ECECEC] text-[#757575] hover:bg-[#D4D4D4]">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-moon">
+                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+              </svg>
+            </button>
+          </div>
+        </header>
+        <div class="auth-container flex-1">
+          <div class="auth-form-card">
+            <div class="book-icon-container">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+              </svg>
+            </div>
+            <h2 id="auth-mode-title" class="text-4xl font-bold mb-10 text-center">Login</h2>
+            <form id="auth-form">
+              <div class="mb-6 relative">
+                <span class="input-icon">@</span>
+                <input type="email" id="auth-email" class="form-input w-full p-4 auth-input pl-10" placeholder="Email" required>
+              </div>
+              <div class="mb-8 relative">
+                <span class="input-icon lock-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock">
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                </span>
+                <input type="password" id="auth-password" class="form-input w-full p-4 auth-input pl-10" placeholder="Password" required>
+              </div>
+              <div id="display-name-field" class="mb-6 hidden relative">
+                <span class="input-icon">👤</span>
+                <input type="text" id="auth-display-name" class="form-input w-full p-4 auth-input pl-10" placeholder="Display Name (for author name)">
+              </div>
+              <button type="submit" id="auth-button" class="w-full auth-button py-4">
+                Login
+              </button>
+            </form>
+
+            <button id="toggle-auth-mode" class="mt-8 toggle-button">
+              No account? Sign up
+            </button>
+
+          </div>
+        </div>
+
+        <footer class="flex justify-center py-5">
+          <div class="flex flex-wrap items-center justify-center gap-4 text-[#757575] text-base font-normal leading-normal">
+            <a href="privacy and policy.html">About Us</a>
+            <a href="privacy and policy.html">Privacy Policy</a>
+            <a href="privacy and policy.html">Terms of Service</a>
+            <span class="mx-2">|</span>
+            <span>© 2025 ምእራፍ. All rights reserved.</span>
+          </div>
+        </footer>
+      </div>
+    </div>
+
+    <script src="auth.js"></script>
+  </body>
+</html>
