@@ -5,6 +5,7 @@
 // - Uploading and downloading books require a user to be logged in.
 // - Prevents duplicate book uploads (same name and author).
 // - NEW: Implements persistent user sessions by storing auth tokens in Firestore.
+// - FIX: Loads service account key from environment variable for secure deployment.
 
 const express = require('express');
 const multer = require('multer');
@@ -16,9 +17,17 @@ const crypto = require('crypto'); // Used for generating unique session tokens
 // --- Firebase Admin SDK Setup ---
 const admin = require('firebase-admin');
 
-// IMPORTANT: This line uses the serviceAccountKey.json file you just placed.
-// Ensure the file is named 'serviceAccountKey.json' and is in the same directory as server.js.
-const serviceAccount = require('./serviceAccountKey.json');
+// IMPORTANT: Load service account key from environment variable for secure deployment.
+// You must set an environment variable named FIREBASE_SERVICE_ACCOUNT_KEY in Render,
+// with the entire JSON content of your serviceAccountKey.json file as its value.
+if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    console.error('ERROR: FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set.');
+    console.error('Please add your Firebase service account key JSON as an environment variable in Render.');
+    process.exit(1); // Exit the process if the key is not found
+}
+
+// Parse the JSON string from the environment variable into a JavaScript object
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
 
 // Initialize Firebase Admin SDK with your service account credentials
 admin.initializeApp({
@@ -48,7 +57,7 @@ const storage = multer.diskStorage({
         cb(null, uploadsDir); // Store files in the 'uploads' directory
     },
     filename: function (req, file, cb) {
-        // Generate a unique filename by prepending a timestamp to the original filename
+        // Generate a unique filename by pre-pending a timestamp to the original filename
         cb(null, Date.now() + '-' + file.originalname);
     }
 });
