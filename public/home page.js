@@ -1,4 +1,5 @@
 // home page.js - FINAL VERSION: Adapted for original index.html UI, preserves functionality.
+// Added console logs to help debug authentication token issues.
 
 const BASE_URL = 'https://merafe-e-book.onrender.com'; // Your live Render URL
 
@@ -8,6 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let userId = localStorage.getItem('userId');
     let userDisplayName = localStorage.getItem('userDisplayName');
     let authToken = localStorage.getItem('authToken');
+
+    console.log('Page loaded. Is Logged In:', isLoggedIn, 'Auth Token (on load):', authToken);
 
     // --- UI Elements ---
     const searchInput = document.getElementById('home-search-input');
@@ -48,6 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Using standard confirm for simplicity as per current pattern. Replace with custom modal in production.
                 const wantsToLogout = confirm(`Are you sure you want to log out?`);
                 if (wantsToLogout) {
+                    console.log('Attempting logout with token:', authToken);
                     try {
                         const response = await fetch(`${BASE_URL}/api/logout`, {
                             method: 'POST',
@@ -61,9 +65,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else {
                             const errorData = await response.json();
                             console.error('Logout failed on server:', errorData.message);
+                            console.log('Logout failed on server:', errorData.message); // Placeholder for custom modal
                         }
                     } catch (error) {
                         console.error('Network error during logout:', error);
+                        console.log('Network error during logout. Please try again.'); // Placeholder for custom modal
                     }
 
                     // Clear local storage regardless of backend response
@@ -166,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         window.location.href = 'auth.html';
                         return;
                     }
-
+                    console.log('Attempting download with token:', authToken); // Log token before download
                     const bookId = event.target.dataset.bookId;
                     try {
                         const response = await fetch(`${BASE_URL}/download-book/${bookId}`, {
@@ -275,6 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             formData.append('pdfFile', pdfFile);
 
+            console.log('Attempting upload with token:', authToken); // Log token before upload
             try {
                 const response = await fetch(`${BASE_URL}/upload-book`, {
                     method: 'POST',
