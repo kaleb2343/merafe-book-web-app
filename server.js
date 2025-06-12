@@ -1,11 +1,12 @@
-// server.js - CRITICAL RE-CONFIRMED VERSION: Firebase Firestore Integration with Persistent Sessions
+// server.js - FINAL VERSION: Firebase Firestore Integration with Persistent Sessions
 // This version ensures users and books are stored in your Firestore database.
 // - Users can sign up and log in.
 // - All uploaded books are publicly visible on the homepage.
 // - Uploading and downloading books require a user to be logged in.
 // - Prevents duplicate book uploads (same name and author).
-// - NEW: Implements persistent user sessions by storing auth tokens in Firestore.
-// - FIX: Loads service account key from environment variable for secure deployment.
+// - Implements persistent user sessions by storing auth tokens in Firestore.
+// - Loads service account key from environment variable for secure deployment.
+// - FIX: Made 'bookDescription' optional for book uploads.
 
 const express = require('express');
 const multer = require('multer');
@@ -219,11 +220,12 @@ app.post('/upload-book', isAuthenticated, (req, res) => {
         const coverImageFile = req.files && req.files['coverImageFile'] ? req.files['coverImageFile'][0] : null;
         const pdfFile = req.files && req.files['pdfFile'] ? req.files['pdfFile'][0] : null;
 
-        if (!bookName || !authorName || !genre || !bookDescription) {
+        // NOTE: bookDescription is now optional
+        if (!bookName || !authorName || !genre || !pdfFile) { // Removed bookDescription from required check
             // Clean up uploaded files if validation fails
             if (coverImageFile && fs.existsSync(coverImageFile.path)) fs.unlinkSync(coverImageFile.path);
             if (pdfFile && fs.existsSync(pdfFile.path)) fs.unlinkSync(pdfFile.path);
-            return res.status(400).json({ message: 'Book name, author, genre, and description are required.' });
+            return res.status(400).json({ message: 'Book name, author, genre, and PDF file are required.' });
         }
 
         // Note: coverImageUrl and pdfDownloadUrl are now derived on the frontend based on paths stored below
@@ -249,7 +251,7 @@ app.post('/upload-book', isAuthenticated, (req, res) => {
                 bookName,
                 authorName,
                 genre,
-                bookDescription,
+                bookDescription: bookDescription || '', // Ensure it's stored as empty string if not provided
                 coverImagePath: coverImageFile ? coverImageFile.path : null, // Store local path
                 pdfPath: pdfFile ? pdfFile.path : null,                     // Store local path
                 uploadedByUserId: req.user.id,                               // ID of the user who uploaded
@@ -346,3 +348,4 @@ app.listen(PORT, () => {
     console.log('***Expected Firestore IDs for users and books will be long alphanumeric strings, not simple numbers.***');
     console.log('***Persistent sessions are now enabled via Firestore.***');
 });
+
