@@ -99,18 +99,7 @@
             color: #E0E0E0 !important;
         }
 
-        /* NEW: Theme Toggle Button Styling */
-        #theme-toggle {
-            background-color: #f3f4f6; /* Light grey for light theme */
-            color: #1f2937; /* Dark text for light theme */
-            border: 1px solid #d1d5db; /* Light border */
-        }
-
-        .dark-theme #theme-toggle {
-            background-color: #4b5563; /* Dark grey for dark theme */
-            color: #e5e7eb; /* Light text for dark theme */
-            border: 1px solid #6b7280; /* Darker border */
-        }
+        /* Removed Theme Toggle Button Styling */
         /* Ensure the main heading "Important Information & Policies" is white in dark theme */
         body.dark-theme main h2 {
             color: #E0E0E0 !important;
@@ -129,10 +118,7 @@
                 <a href="index.html" class="text-white hover:text-gray-200 font-semibold px-3 py-2 rounded-md">Home</a>
             </nav>
         </div>
-        <!-- Theme Toggle Button -->
-        <button id="theme-toggle" class="p-2 rounded-full transition duration-300 flex items-center justify-center">
-            <i class="fas fa-moon text-xl"></i> <!-- Moon icon for dark mode -->
-        </button>
+        <!-- Theme Toggle Button Removed -->
     </header>
 
     <main class="container mx-auto p-8 flex-grow">
@@ -142,16 +128,19 @@
         <div id="about" class="content-section">
             <h3 class="text-2xl font-bold mb-4">About ምእራፍ</h3>
             <p class="mb-4">
-                Welcome to ምእራፍ! We created this platform to help writers and creators share their work easily and freely. Whether you're an author looking to publish or a reader looking for new stories, our goal is to connect creativity with community.
+                Welcome to ምእራፍ! This web application is a **personal testing project** designed to demonstrate features and functionality. It is **not intended for public use or production environments.**
             </p>
             <p class="mb-4">
-                Users can:
+                **Risk for Users:** Please be aware that this application does not implement robust security measures, including user verification or advanced data protection protocols suitable for public-facing applications. **Any use of this application is at your own risk.** Do not upload sensitive or personal information.
+            </p>
+            <p class="mb-4">
+                You can:
             </p>
             <ul class="list-disc list-inside ml-4 mb-4">
-                <li>Sign up quickly</li>
-                <li>Upload books with details like title, author, genre, cover, and description</li>
+                <li>Sign up quickly (no external verification)</li>
+                <li>Upload books with details like title, author, genre, cover</li>
                 <li>Share PDF books for free</li>
-                <li>Have fun exploring and creating!</li>
+                <li>Explore and interact with content</li>
             </ul>
         </div>
 
@@ -245,7 +234,7 @@
             </p>
             <h4 class="text-xl font-semibold mb-3">7. Governing Law</h4>
             <p class="mb-4">
-                These Terms shall be governed by and construed in accordance with the laws of [Your Jurisdiction Here], without regard to its conflict of law provisions.
+                These Terms shall be governed by and construed in accordance with the laws of Ethiopia Addis Ababa, without regard to its conflict of law provisions.
             </p>
         </div>
 
@@ -253,13 +242,13 @@
         <div id="contact" class="content-section">
             <h3 class="text-2xl font-bold mb-4">Contact Us</h3>
             <p class="mb-4">
-                Need help or have feedback? We'd love to hear from you!
+                Need help or have feedback? This is a personal testing application.
             </p>
             <ul class="list-disc list-inside mb-4 ml-4">
-                <li>Email: [Your Contact Email Here]</li>
-                <li>Support Hours: Monday – Friday, 9 AM to 5 PM (Your Timezone)</li>
+                <li>Email: kalebdawit2343@gmail.com</li>
+                <li>Support Hours: Not applicable for a personal testing project.</li> <!-- Removed "Support Hours" line -->
             </ul>
-            <p class="mb-4">We'll get back to you as soon as we can.</p>
+            <p class="mb-4">Direct contact is not available for this testing app. For inquiries, please reach out via my portfolio page if available.</p>
         </div>
     </main>
 
@@ -271,15 +260,17 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const body = document.body;
-            const themeToggle = document.getElementById('theme-toggle');
+            // Removed themeToggle element, so we don't need to query it
+            // const themeToggle = document.getElementById('theme-toggle');
 
-            // Apply saved theme on load
+            // Apply saved theme on load (still useful if theme is set elsewhere)
             const savedTheme = localStorage.getItem('theme');
             if (savedTheme) {
                 body.classList.add(savedTheme);
             }
 
-            // Theme Toggle functionality
+            // Theme Toggle functionality removed
+            /*
             if (themeToggle) {
                 themeToggle.addEventListener('click', () => {
                     if (body.classList.contains('dark-theme')) {
@@ -291,6 +282,7 @@
                     }
                 });
             }
+            */
         });
     </script>
 </body>
