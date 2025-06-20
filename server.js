@@ -1,23 +1,34 @@
-// server.js - CRITICAL RE-CONFIRMED VERSION: Firebase Firestore Integration
+// server.js - FINAL VERSION: Firebase Firestore Integration with Persistent Sessions
 // This version ensures users and books are stored in your Firestore database.
 // - Users can sign up and log in.
 // - All uploaded books are publicly visible on the homepage.
 // - Uploading and downloading books require a user to be logged in.
 // - Prevents duplicate book uploads (same name and author).
+// - Implements persistent user sessions by storing auth tokens in Firestore.
+// - Loads service account key from environment variable for secure deployment.
+// - FIX: Made 'bookDescription' optional for book uploads.
 
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
-const crypto = require('crypto');
+const crypto = require('crypto'); // Used for generating unique session tokens
 
 // --- Firebase Admin SDK Setup ---
 const admin = require('firebase-admin');
 
-// IMPORTANT: This line uses the serviceAccountKey.json file you just placed.
-// Ensure the file is named 'serviceAccountKey.json' and is in the same directory as server.js.
-const serviceAccount = require('./serviceAccountKey.json'); 
+// IMPORTANT: Load service account key from environment variable for secure deployment.
+// You must set an environment variable named FIREBASE_SERVICE_ACCOUNT_KEY in Render,
+// with the entire JSON content of your serviceAccountKey.json file as its value.
+if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    console.error('ERROR: FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set.');
+    console.error('Please add your Firebase service account key JSON as an environment variable in Render.');
+    process.exit(1); // Exit the process if the key is not found
+}
+
+// Parse the JSON string from the environment variable into a JavaScript object
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
 
 // Initialize Firebase Admin SDK with your service account credentials
 admin.initializeApp({
@@ -47,7 +58,7 @@ const storage = multer.diskStorage({
         cb(null, uploadsDir); // Store files in the 'uploads' directory
     },
     filename: function (req, file, cb) {
-        // Generate a unique filename by prepending a timestamp to the original filename
+        // Generate a unique filename by pre-pending a timestamp to the original filename
         cb(null, Date.now() + '-' + file.originalname);
     }
 });
@@ -60,15 +71,9 @@ const upload = multer({ storage: storage }).fields([
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- In-memory Session Management ---
-// Stores active session tokens mapped to user IDs.
-// Note: This map is cleared when the server restarts. For persistent sessions,
-// a more robust solution (e.g., storing sessions in Firestore) would be needed.
-const activeSessions = new Map(); // sessionId -> userId
-
 // --- Authentication Middleware ---
 // This middleware checks if a request is authenticated by validating the
-// 'x-auth-token' header sent by the client.
+// 'x-auth-token' header sent by the client against Firestore sessions.
 const isAuthenticated = async (req, res, next) => {
     const authToken = req.headers['x-auth-token']; // Get the authentication token from the request headers
 
@@ -76,21 +81,31 @@ const isAuthenticated = async (req, res, next) => {
         return res.status(401).json({ message: 'Unauthorized: No authentication token provided.' });
     }
 
-    const userId = activeSessions.get(authToken); // Retrieve the userId associated with the token from active sessions map
-
-    if (!userId) {
-        return res.status(401).json({ message: 'Unauthorized: Invalid or expired token.' });
-    }
     try {
+        // Query the 'sessions' collection for a session matching the provided authToken
+        const sessionSnapshot = await db.collection('sessions').where('authToken', '==', authToken).limit(1).get();
+
+        if (sessionSnapshot.empty) {
+            return res.status(401).json({ message: 'Unauthorized: Invalid or expired token.' });
+        }
+
+        const sessionDoc = sessionSnapshot.docs[0];
+        const sessionData = sessionDoc.data();
+        const userId = sessionData.userId; // Get the userId associated with the valid session
+
+        // Verify that the user associated with this session still exists
         const userDoc = await db.collection('users').doc(userId).get();
         if (!userDoc.exists) {
-            activeSessions.delete(authToken);
+            // If user doesn't exist, invalidate the session
+            await db.collection('sessions').doc(sessionDoc.id).delete();
             return res.status(401).json({ message: 'Unauthorized: User associated with token not found.' });
         }
+
+        // Attach user data to the request for use in subsequent middleware/routes
         req.user = { id: userId, ...userDoc.data() };
-        next();
+        next(); // Proceed to the next middleware or route handler
     } catch (error) {
-        console.error('Error verifying user token with Firestore:', error);
+        console.error('Error verifying authentication token with Firestore:', error);
         res.status(500).json({ message: 'Internal server error during authentication.' });
     }
 };
@@ -101,7 +116,7 @@ const isAuthenticated = async (req, res, next) => {
 app.post('/api/signup', async (req, res) => {
     const { email, password, displayName } = req.body;
     if (!email || !password || !displayName) {
-        return res.status(400).json({ message: 'All fields are required for signup.' });
+        return res.status(400).json({ message: 'All fields (email, password, displayName) are required for signup.' });
     }
     try {
         const usersRef = db.collection('users');
@@ -111,7 +126,7 @@ app.post('/api/signup', async (req, res) => {
         }
         const newUserRef = await usersRef.add({
             email,
-            password, // Store password (insecure for production, hash using bcrypt in a real app!)
+            password, // IMPORTANT: In a real application, hash this password using bcrypt!
             displayName,
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
@@ -123,6 +138,7 @@ app.post('/api/signup', async (req, res) => {
     }
 });
 
+// Login Endpoint: Authenticates user and creates a persistent session in Firestore
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -136,23 +152,56 @@ app.post('/api/login', async (req, res) => {
         }
         const userDoc = snapshot.docs[0];
         const userData = userDoc.data();
-        if (userData.password !== password) {
+        if (userData.password !== password) { // IMPORTANT: Compare with hashed password in a real app!
             return res.status(401).json({ message: 'Invalid email or password.' });
         }
+
+        // Generate a new unique session token
         const sessionToken = crypto.randomUUID();
-        activeSessions.set(sessionToken, userDoc.id);
+
+        // Store the session token in Firestore
+        await db.collection('sessions').add({
+            userId: userDoc.id,
+            authToken: sessionToken,
+            loggedInAt: admin.firestore.FieldValue.serverTimestamp()
+            // You might add an expiration time here for automatic cleanup
+        });
+
         console.log('User logged in from Firestore:', userData.email, 'Session Token:', sessionToken);
         res.status(200).json({
             message: 'Login successful!',
             userId: userDoc.id,
             displayName: userData.displayName,
-            authToken: sessionToken
+            authToken: sessionToken // Send the token back to the client
         });
     } catch (error) {
         console.error('Error during login:', error);
         res.status(500).json({ message: 'Internal server error during login.' });
     }
 });
+
+// Logout Endpoint: Invalidates the user's current session token in Firestore
+app.post('/api/logout', isAuthenticated, async (req, res) => {
+    const authToken = req.headers['x-auth-token']; // Get the token from the header
+
+    try {
+        const sessionSnapshot = await db.collection('sessions').where('authToken', '==', authToken).limit(1).get();
+
+        if (!sessionSnapshot.empty) {
+            // Delete the session document from Firestore
+            await db.collection('sessions').doc(sessionSnapshot.docs[0].id).delete();
+            console.log(`Session for user ${req.user.id} (token: ${authToken}) deleted from Firestore.`);
+            res.status(200).json({ message: 'Logged out successfully.' });
+        } else {
+            // Token not found or already invalidated
+            res.status(404).json({ message: 'Session not found or already logged out.' });
+        }
+    } catch (error) {
+        console.error('Error during logout:', error);
+        res.status(500).json({ message: 'Internal server error during logout.' });
+    }
+});
+
 
 // --- Book Upload Endpoint: Saves book details to Firestore ---
 // This endpoint is protected by the `isAuthenticated` middleware.
@@ -171,12 +220,16 @@ app.post('/upload-book', isAuthenticated, (req, res) => {
         const coverImageFile = req.files && req.files['coverImageFile'] ? req.files['coverImageFile'][0] : null;
         const pdfFile = req.files && req.files['pdfFile'] ? req.files['pdfFile'][0] : null;
 
-        if (!bookName || !authorName || !genre || !bookDescription) {
-            return res.status(400).json({ message: 'Book name, author, genre, and description are required.' });
+        // NOTE: bookDescription is now optional
+        if (!bookName || !authorName || !genre || !pdfFile) { // Removed bookDescription from required check
+            // Clean up uploaded files if validation fails
+            if (coverImageFile && fs.existsSync(coverImageFile.path)) fs.unlinkSync(coverImageFile.path);
+            if (pdfFile && fs.existsSync(pdfFile.path)) fs.unlinkSync(pdfFile.path);
+            return res.status(400).json({ message: 'Book name, author, genre, and PDF file are required.' });
         }
 
-        let coverImageUrl = null;
-        let pdfDownloadUrl = null;
+        // Note: coverImageUrl and pdfDownloadUrl are now derived on the frontend based on paths stored below
+        // They are not directly stored in Firestore for this setup, as the backend serves the actual files.
 
         try {
             // --- Duplicate Book Check against Firestore ---
@@ -187,6 +240,9 @@ app.post('/upload-book', isAuthenticated, (req, res) => {
                 .get();
 
             if (!existingBooksQuery.empty) {
+                // Clean up uploaded files if duplicate
+                if (coverImageFile && fs.existsSync(coverImageFile.path)) fs.unlinkSync(coverImageFile.path);
+                if (pdfFile && fs.existsSync(pdfFile.path)) fs.unlinkSync(pdfFile.path);
                 return res.status(409).json({ message: 'A book with this name and author already exists.' });
             }
 
@@ -195,7 +251,7 @@ app.post('/upload-book', isAuthenticated, (req, res) => {
                 bookName,
                 authorName,
                 genre,
-                bookDescription,
+                bookDescription: bookDescription || '', // Ensure it's stored as empty string if not provided
                 coverImagePath: coverImageFile ? coverImageFile.path : null, // Store local path
                 pdfPath: pdfFile ? pdfFile.path : null,                     // Store local path
                 uploadedByUserId: req.user.id,                               // ID of the user who uploaded
@@ -223,6 +279,8 @@ app.post('/upload-book', isAuthenticated, (req, res) => {
 app.get('/api/books', async (req, res) => {
     try {
         let booksQuery = db.collection('books');
+        // IMPORTANT: Add an index for 'uploadedAt' in Firestore if you don't have one!
+        // The error message will tell you the exact index needed.
         const snapshot = await booksQuery.orderBy('uploadedAt', 'desc').get();
         const books = [];
         snapshot.forEach(doc => {
@@ -233,8 +291,9 @@ app.get('/api/books', async (req, res) => {
                 authorName: data.authorName,
                 genre: data.genre,
                 bookDescription: data.bookDescription,
-                coverImageUrl: data.coverImagePath ? `/uploads/${path.basename(data.coverImagePath)}` : null,
-                pdfDownloadUrl: data.pdfPath ? `/download-book/${doc.id}` : null,
+                // Construct full URL for cover image based on your server's static serving setup
+                coverImageUrl: data.coverImagePath ? `${req.protocol}://${req.get('host')}/uploads/${path.basename(data.coverImagePath)}` : 'https://placehold.co/158x210/CCCCCC/000000?text=No+Cover',
+                pdfDownloadUrl: data.pdfPath ? `${req.protocol}://${req.get('host')}/download-book/${doc.id}` : null,
                 uploadedByUserId: data.uploadedByUserId // This will be the actual Firestore user ID
             });
         });
@@ -287,4 +346,6 @@ app.listen(PORT, () => {
     console.log('Firestore integration enabled and ALL books are publicly displayed.');
     console.log('***IMPORTANT: Ensure your "serviceAccountKey.json" file is in the same directory as server.js.***');
     console.log('***Expected Firestore IDs for users and books will be long alphanumeric strings, not simple numbers.***');
+    console.log('***Persistent sessions are now enabled via Firestore.***');
 });
+

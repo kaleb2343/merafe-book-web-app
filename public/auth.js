@@ -1,4 +1,7 @@
-// auth.js - UPDATED: Simplified success and failure messages
+// auth.js - UPDATED: Simplified success and failure messages and dynamic BASE_URL
+
+// IMPORTANT: This is now set to your live Render URL.
+const BASE_URL = 'https://merafe-e-book.onrender.com'; // Your live Render URL
 
 document.addEventListener('DOMContentLoaded', () => {
     const authForm = document.getElementById('auth-form');
@@ -76,11 +79,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let apiUrl = '';
         let payload = {};
 
+        // Use the dynamic BASE_URL for API calls
         if (isLoginMode) {
-            apiUrl = 'http://localhost:3000/api/login';
+            apiUrl = `${BASE_URL}/api/login`;
             payload = { email, password };
         } else {
-            apiUrl = 'http://localhost:3000/api/signup';
+            apiUrl = `${BASE_URL}/api/signup`;
             if (!displayName) {
                 if (authMessage) authMessage.textContent = 'Not successful. Please try again.';
                 console.error('Please enter a display name for signup.');
