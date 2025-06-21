@@ -1,9 +1,11 @@
-    // netlify/functions/login.js
+    // netlify/functions/get-books.js
 
+    // Import Supabase client and Firebase Admin SDK (for auth only)
+    const { createClient } = require('@supabase/supabase-js');
     const admin = require('firebase-admin');
 
-    // Initialize Firebase Admin SDK using environment variables
-    // This is for Firebase Authentication ONLY.
+    // Initialize Firebase Admin SDK if it hasn't been initialized already.
+    // This is ONLY for verifying user authentication tokens.
     if (!admin.apps.length) {
         try {
             admin.initializeApp({
@@ -13,14 +15,20 @@
                     privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'), // Ensure newlines are correctly interpreted
                 }),
             });
-            console.log('Firebase Admin SDK initialized successfully for login (auth only, from env vars).');
+            console.log('Firebase Admin SDK initialized successfully for get-books (auth only).');
         } catch (error) {
-            console.error('Firebase Admin SDK initialization error for login:', error);
+            console.error('Firebase Admin SDK initialization error for get-books:', error);
         }
     }
 
+    // Initialize Supabase client
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
     exports.handler = async (event, context) => {
-        if (event.httpMethod !== 'POST') {
+        // Only allow GET requests for fetching books
+        if (event.httpMethod !== 'GET') {
             return {
                 statusCode: 405,
                 body: JSON.stringify({ message: 'Method Not Allowed' }),
@@ -28,43 +36,37 @@
         }
 
         try {
-            const { email, password } = JSON.parse(event.body);
+            // Fetch all documents from the 'books' table in Supabase
+            const { data: books, error } = await supabase
+                .from('books') // Your table name in Supabase
+                .select('*')
+                .order('uploadedAt', { ascending: false }); // Order by most recent uploads
 
-            let userRecord;
-            try {
-                userRecord = await admin.auth().getUserByEmail(email);
-            } catch (error) {
-                if (error.code === 'auth/user-not-found') {
-                    return {
-                        statusCode: 404,
-                        body: JSON.stringify({ message: 'User not found. (Insecure: Password not validated)' }),
-                    };
-                }
-                console.error('Error fetching user for login:', error);
+            if (error) {
+                console.error('Supabase fetch books error:', error);
                 return {
                     statusCode: 500,
-                    body: JSON.stringify({ message: 'Internal server error during authentication.' }),
+                    body: JSON.stringify({ message: 'Failed to fetch books from Supabase.' }),
                 };
             }
 
-            const customToken = await admin.auth().createCustomToken(userRecord.uid);
-
+            // Return the fetched books as a JSON array
             return {
                 statusCode: 200,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    message: 'Login successful!',
-                    token: customToken,
-                    userId: userRecord.uid,
-                    userDisplayName: userRecord.displayName || 'User',
-                }),
+                headers: {
+                    "Content-Type": "application/json",
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, x-auth-token',
+                },
+                body: JSON.stringify(books),
             };
 
         } catch (error) {
-            console.error('Netlify function login error:', error);
+            console.error('Netlify function get-books general error:', error);
             return {
                 statusCode: 500,
-                body: JSON.stringify({ message: 'Internal server error.' }),
+                body: JSON.stringify({ message: 'Internal server error while fetching books.' }),
             };
         }
     };
