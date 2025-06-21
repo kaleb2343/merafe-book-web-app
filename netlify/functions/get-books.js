@@ -1,19 +1,19 @@
 // netlify/functions/get-books.js
 
-// Import Supabase client and Firebase Admin SDK (for auth only)
+// Import Supabase client for database interaction and Firebase Admin SDK for authentication.
 const { createClient } = require('@supabase/supabase-js');
 const admin = require('firebase-admin');
 
-// Path to your service account key file for Firebase Admin SDK (for auth verification)
-//const serviceAccount = require('../serviceAccountKey.json');
-
-// Initialize Firebase Admin SDK if it hasn't been initialized already.
-// This is ONLY for verifying user authentication tokens.
+// Initialize Firebase Admin SDK for authentication token verification.
+// This ensures initialization happens only once per function instance lifecycle.
 if (!admin.apps.length) {
     try {
         admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
-            projectId: process.env.FIREBASE_PROJECT_ID,
+            credential: admin.credential.cert({
+                projectId: process.env.FIREBASE_PROJECT_ID,
+                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            }),
         });
         console.log('Firebase Admin SDK initialized successfully for get-books (auth only).');
     } catch (error) {
@@ -21,43 +21,47 @@ if (!admin.apps.length) {
     }
 }
 
-// Initialize Supabase client
-// This uses the environment variables you set up in Netlify.
+// Initialize Supabase client using environment variables for URL and API key.
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Main handler for the Netlify Function.
 exports.handler = async (event, context) => {
-    // Only allow GET requests for fetching books
+    // Only allow GET requests.
     if (event.httpMethod !== 'GET') {
         return {
-            statusCode: 405,
+            statusCode: 405, // Method Not Allowed
             body: JSON.stringify({ message: 'Method Not Allowed' }),
         };
     }
 
     try {
-        // Fetch all documents from the 'books' table in Supabase
-        // The .select('*') fetches all columns.
+        // Fetch all documents from the 'books' table in Supabase.
+        // '.select('*')' retrieves all columns.
+        // '.order('uploadedAt', { ascending: false })' sorts results by upload time, newest first.
         const { data: books, error } = await supabase
-            .from('books') // Your table name in Supabase
+            .from('books') // The name of your table in Supabase
             .select('*')
-            .order('uploadedAt', { ascending: false }); // Order by most recent uploads
+            .order('uploadedAt', { ascending: false });
 
+        // Handle any errors from Supabase during the fetch operation.
         if (error) {
             console.error('Supabase fetch books error:', error);
             return {
-                statusCode: 500,
+                statusCode: 500, // Internal Server Error
                 body: JSON.stringify({ message: 'Failed to fetch books from Supabase.' }),
             };
         }
 
-        // Return the fetched books as a JSON array
+        // Return the fetched books as a JSON array.
         return {
-            statusCode: 200,
+            statusCode: 200, // OK
             headers: {
                 "Content-Type": "application/json",
-                'Access-Control-Allow-Origin': '*', // IMPORTANT: Adjust this to your Netlify domain in production
+                // CORS headers to allow requests from your frontend.
+                // IMPORTANT: In production, change '*' to your actual Netlify domain (e.g., 'https://your-site.netlify.app').
+                'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type, x-auth-token',
             },
@@ -65,10 +69,11 @@ exports.handler = async (event, context) => {
         };
 
     } catch (error) {
+        // Catch any unexpected general errors during the function execution.
         console.error('Netlify function get-books general error:', error);
         return {
-            statusCode: 500,
-            body: JSON.stringify({ message: 'Internal server error while fetching books.' }),
+            statusCode: 500, // Internal Server Error
+            body: JSON.stringify({ message: `Internal server error while fetching books: ${error.message}` }),
         };
     }
 };
