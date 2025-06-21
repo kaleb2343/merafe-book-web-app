@@ -1,9 +1,8 @@
-    // netlify/functions/upload-book.js
+    // netlify/functions/download-book.js
 
     // Import Supabase client and Firebase Admin SDK (for auth only)
     const { createClient } = require('@supabase/supabase-js');
     const admin = require('firebase-admin');
-    const Busboy = require('busboy'); // Library to parse multipart/form-data requests
 
     // Initialize Firebase Admin SDK if it hasn't been initialized already.
     // This is ONLY for verifying user authentication tokens.
@@ -16,9 +15,9 @@
                     privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'), // Ensure newlines are correctly interpreted
                 }),
             });
-            console.log('Firebase Admin SDK initialized successfully for upload-book (auth only).');
+            console.log('Firebase Admin SDK initialized successfully for download-book (auth only).');
         } catch (error) {
-            console.error('Firebase Admin SDK initialization error for upload-book:', error);
+            console.error('Firebase Admin SDK initialization error for download-book:', error);
         }
     }
 
@@ -26,91 +25,6 @@
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-    // Helper function to parse multipart/form-data
-    function parseMultipartForm(event) {
-        return new Promise((resolve, reject) => {
-            const busboy = Busboy({
-                headers: event.headers
-            });
-
-            const fields = {};
-            const files = {};
-            let fileUploadPromises = [];
-
-            busboy.on('file', (fieldname, file, filename, encoding, mimetype) => {
-                console.log(`File [${fieldname}]: filename: %j, encoding: %j, mimetype: %j`, filename.filename, encoding, mimetype);
-
-                const uniqueFilename = `${Date.now()}-${filename.filename}`;
-                let bucketName = '';
-
-                if (fieldname === 'pdfFile') {
-                    bucketName = 'book-pdfs'; // Your Supabase Storage bucket for PDFs
-                } else if (fieldname === 'coverImageFile') {
-                    bucketName = 'book-covers'; // Your Supabase Storage bucket for cover images
-                } else {
-                    reject(new Error(`Unsupported file field: ${fieldname}`));
-                    return;
-                }
-
-                const fileBuffer = [];
-                file.on('data', data => {
-                    fileBuffer.push(data);
-                });
-
-                fileUploadPromises.push(new Promise(async (res, rej) => {
-                    file.on('end', async () => {
-                        const buffer = Buffer.concat(fileBuffer);
-                        try {
-                            const { data, error } = await supabase.storage
-                                .from(bucketName)
-                                .upload(uniqueFilename, buffer, {
-                                    contentType: mimetype,
-                                    upsert: true, // Overwrite if file exists
-                                });
-
-                            if (error) {
-                                console.error('Supabase upload error:', error);
-                                return rej(error);
-                            }
-
-                            // Construct the public URL for Supabase Storage
-                            // Supabase public URLs are predictable: [SUPABASE_URL]/storage/v1/object/public/[bucket_name]/[file_path]
-                            const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${uniqueFilename}`;
-                            console.log(`Uploaded to ${publicUrl}`);
-
-                            files[fieldname] = {
-                                path: uniqueFilename, // This is just the filename for internal reference
-                                url: publicUrl // The full public URL
-                            };
-                            res();
-                        } catch (err) {
-                            console.error('Error during Supabase upload process:', err);
-                            rej(err);
-                        }
-                    });
-                }));
-            });
-
-            busboy.on('field', (fieldname, val, fieldnameTruncated, valTruncated, encoding, mimetype) => {
-                fields[fieldname] = val;
-            });
-
-            busboy.on('finish', async () => {
-                try {
-                    await Promise.all(fileUploadPromises);
-                    resolve({ fields, files });
-                } catch (err) {
-                    reject(err);
-                }
-            });
-
-            busboy.on('error', reject);
-
-            busboy.end(Buffer.from(event.body, event.isBase64Encoded ? 'base64' : 'utf8'));
-        });
-    }
-
 
     exports.handler = async (event, context) => {
         // Enable CORS for preflight OPTIONS requests
@@ -127,7 +41,7 @@
             };
         }
 
-        if (event.httpMethod !== 'POST') {
+        if (event.httpMethod !== 'GET') {
             return {
                 statusCode: 405,
                 body: JSON.stringify({ message: 'Method Not Allowed' }),
@@ -142,77 +56,63 @@
             };
         }
 
-        let decodedToken;
         try {
             // Verify the user's Firebase Auth token
-            decodedToken = await admin.auth().verifyIdToken(authToken);
-        } catch (error) {
-            console.error('Token verification failed:', error);
-            return {
-                statusCode: 401,
-                body: JSON.stringify({ message: 'Invalid or expired authentication token. Please log in again.' }),
-            };
-        }
+            await admin.auth().verifyIdToken(authToken);
 
-        try {
-            const { fields, files } = await parseMultipartForm(event);
+            // Extract book ID from the path (e.g., /download-book/BOOK_ID)
+            const bookId = event.path.split('/').pop();
+            const filename = event.queryStringParameters?.filename || 'download.pdf';
 
-            const { bookName, authorName, genre, bookDescription } = fields;
-            const pdfFile = files.pdfFile;
-            const coverImageFile = files.coverImageFile;
-
-            if (!bookName || !authorName || !genre || !pdfFile) {
+            if (!bookId) {
                 return {
                     statusCode: 400,
-                    body: JSON.stringify({ message: 'Missing required book details or PDF file.' }),
+                    body: JSON.stringify({ message: 'Book ID is required.' }),
                 };
             }
 
-            const newBook = {
-                bookName: bookName,
-                authorName: authorName,
-                genre: genre,
-                bookDescription: bookDescription || '',
-                uploadedBy: decodedToken.uid, // Firebase UID of the uploader
-                // uploadedAt will be set by the database default value
-                pdfPath: pdfFile.path, // Filename in Supabase Storage
-                pdfDownloadUrl: pdfFile.url, // Public URL from Supabase Storage
-                coverImageUrl: coverImageFile ? coverImageFile.url : 'https://placehold.co/158x210/CCCCCC/000000?text=No+Cover', // Public URL from Supabase Storage
-            };
-
-            // Insert new book record into Supabase 'books' table
-            const { data, error } = await supabase
+            // Fetch book data from Supabase to get the PDF download URL
+            const { data: bookData, error: fetchError } = await supabase
                 .from('books')
-                .insert([newBook]);
+                .select('pdfDownloadUrl, pdfPath') // Select only the necessary columns
+                .eq('id', bookId)
+                .single(); // Expecting one row
 
-            if (error) {
-                console.error('Supabase insert book error:', error);
+            if (fetchError || !bookData || !bookData.pdfDownloadUrl) {
+                console.error('Supabase fetch book for download error:', fetchError);
                 return {
-                    statusCode: 500,
-                    body: JSON.stringify({ message: `Failed to save book details to database: ${error.message}` }),
+                    statusCode: 404,
+                    body: JSON.stringify({ message: 'PDF file not found for this book.' }),
                 };
             }
+
+            // The public URL is already stored in pdfDownloadUrl from upload-book.js
+            // We can just redirect the client to this public URL.
+            const pdfUrl = bookData.pdfDownloadUrl;
 
             return {
-                statusCode: 201, // 201 Created
+                statusCode: 302, // 302 Found or 307 Temporary Redirect
                 headers: {
-                    "Content-Type": "application/json",
+                    'Location': pdfUrl, // Redirect to the public Supabase Storage URL
+                    'Content-Disposition': `attachment; filename="${filename}"`, // Suggests download name
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
                     'Access-Control-Allow-Headers': 'Content-Type, x-auth-token',
                 },
-                body: JSON.stringify({
-                    message: 'Book uploaded successfully!',
-                    bookId: data && data.length > 0 ? data[0].id : 'unknown',
-                    ...newBook
-                }),
+                body: '',
             };
 
         } catch (error) {
-            console.error('Netlify function upload-book general error:', error);
+            console.error('Netlify function download-book general error:', error);
+            if (error.code === 'auth/id-token-expired' || error.code === 'auth/argument-error') {
+                return {
+                    statusCode: 401,
+                    body: JSON.stringify({ message: 'Invalid or expired authentication token. Please log in again.' }),
+                };
+            }
             return {
                 statusCode: 500,
-                body: JSON.stringify({ message: `Internal server error during book upload: ${error.message}` }),
+                body: JSON.stringify({ message: `Internal server error during download: ${error.message}` }),
             };
         }
     };
