@@ -1,0 +1,10 @@
+# Redirects for Netlify Functions
+# This ensures that requests to /api/functions/your-function-name
+# are correctly routed to Netlify's function infrastructure.
+
+# Catch-all for Netlify Functions, if you're using /api/ prefix in your BASE_URL
+# This isn't strictly necessary if BASE_URL is correct, but can help ensure routing.
+# /api/* /.netlify/functions/:splat    200
+
+# Explicit redirect for your functions if the BASE_URL directly points to /.netlify/functions
+/netlify/functions/* /.netlify/functions/:splat    200
