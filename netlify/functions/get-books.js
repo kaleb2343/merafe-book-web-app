@@ -43,8 +43,7 @@ exports.handler = async (event, context) => {
         const { data: books, error } = await supabase
             .from('books') // The name of your table in Supabase
             .select('*')
-            .order('uploadedAt', { ascending: false });
-
+             .order('uploadedat', { ascending: false }); // Order by most recent uploads
         // Handle any errors from Supabase during the fetch operation.
         if (error) {
             console.error('Supabase fetch books error:', error);
