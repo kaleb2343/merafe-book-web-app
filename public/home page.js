@@ -2,7 +2,7 @@
 // Added console logs to help debug authentication token issues.
 
 // IMPORTANT: Replace 'YOUR_NETLIFY_SITE_URL_HERE' with your actual Netlify site URL (e.g., https://your-site-name-xxxxxx.netlify.app)
-const BASE_URL = 'merafe.netlify.app'; 
+const BASE_URL = 'https://merafe.netlify.app/.netlify/functions';'; 
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Authentication Status Check ---
