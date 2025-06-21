@@ -1,8 +1,6 @@
 [build]
-  publish = "public" # This should already match your Netlify settings
-  functions = "netlify/functions" # This should already match your Netlify settings
+  publish = "public"
+  functions = "netlify/functions"
 
 [functions]
-  # Tell Netlify to include the serviceAccountKey.json file when bundling functions
-  # The path is relative to the repository root.
-  included_files = ["./netlify/serviceAccountKey.json"]
+  # No included_files needed anymore as serviceAccountKey.json is removed
