@@ -5,7 +5,7 @@ const { createClient } = require('@supabase/supabase-js');
 const admin = require('firebase-admin');
 
 // Path to your service account key file for Firebase Admin SDK (for auth verification)
-const serviceAccount = require('../serviceAccountKey.json');
+//const serviceAccount = require('../serviceAccountKey.json');
 
 // Initialize Firebase Admin SDK if it hasn't been initialized already.
 // This is ONLY for verifying user authentication tokens.
