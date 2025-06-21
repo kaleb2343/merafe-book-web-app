@@ -1,21 +1,21 @@
-{
-  "name": "book-webapp",
-  "version": "1.0.0",
-  "main": "auth.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "dependencies": {
-    "@supabase/supabase-js": "^2.50.0",
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "firebase": "^11.9.1",
-    "firebase-admin": "^13.4.0",
-    "multer": "^2.0.1"
-  }
-}
+    {
+      "name": "book-webapp",
+      "version": "1.0.0",
+      "main": "auth.js",
+      "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "node server.js"
+      },
+      "keywords": [],
+      "author": "",
+      "license": "ISC",
+      "description": "",
+      "dependencies": {
+        "@supabase/supabase-js": "^2.50.0",
+        "busboy": "^1.6.0",       
+        "cors": "^2.8.5",
+        "firebase": "^11.9.1",
+        "firebase-admin": "^13.4.0"
+      }
+    }
+    
