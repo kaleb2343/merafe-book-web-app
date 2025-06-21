@@ -1,7 +1,8 @@
 // home page.js - FINAL VERSION: Adapted for original index.html UI, preserves functionality.
 // Added console logs to help debug authentication token issues.
 
-const BASE_URL = 'https://merafe-e-book.onrender.com'; // Your live Render URL
+// IMPORTANT: Replace 'YOUR_NETLIFY_SITE_URL_HERE' with your actual Netlify site URL (e.g., https://your-site-name-xxxxxx.netlify.app)
+const BASE_URL = 'YOUR_NETLIFY_SITE_URL_HERE'; 
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Authentication Status Check ---
@@ -53,7 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (wantsToLogout) {
                     console.log('Attempting logout with token:', authToken);
                     try {
-                        const response = await fetch(`${BASE_URL}/api/logout`, {
+                        // All API calls will now go to Netlify Functions or directly to Firebase where applicable
+                        const response = await fetch(`${BASE_URL}/.netlify/functions/logout`, { // Assuming a logout function
                             method: 'POST',
                             headers: {
                                 'x-auth-token': authToken
@@ -97,7 +99,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Fetch and Display Books ---
     async function fetchAndDisplayBooks(searchTerm = '') {
         try {
-            const response = await fetch(`${BASE_URL}/api/books`);
+            // Updated API endpoint to Netlify Function
+            const response = await fetch(`${BASE_URL}/.netlify/functions/get-books`); // Assuming a get-books function
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -156,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="text-gray-500 text-xs">${book.genre}</p>
                     <p class="text-gray-700 text-sm flex-grow">${book.bookDescription}</p>
                     ${book.pdfDownloadUrl ? `
-                        <button class="download-button mt-2 w-full border border-[#141414] text-[#141414] py-1 px-2 rounded-md text-xs font-medium hover:bg-[#141414] hover:text-white transition-colors duration-200" data-book-id="${book.id}">
+                        <button class="download-button mt-2 w-full border border-[#141414] text-[#141414] py-1 px-2 rounded-md text-xs font-medium hover:bg-[#141414] hover:text-white transition-colors duration-200" data-book-id="${book.id}" data-book-name="${book.bookName}">
                             Download PDF
                         </button>` : ''}
                 `;
@@ -174,8 +177,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     console.log('Attempting download with token:', authToken); // Log token before download
                     const bookId = event.target.dataset.bookId;
+                    const bookName = event.target.dataset.bookName; // Get book name for filename
                     try {
-                        const response = await fetch(`${BASE_URL}/download-book/${bookId}`, {
+                        // Updated API endpoint to Netlify Function
+                        const response = await fetch(`${BASE_URL}/.netlify/functions/download-book/${bookId}?filename=${encodeURIComponent(bookName + '.pdf')}`, { // Pass filename for backend
                             method: 'GET',
                             headers: {
                                 'x-auth-token': authToken
@@ -187,16 +192,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             const downloadUrl = window.URL.createObjectURL(blob);
                             const a = document.createElement('a');
                             a.href = downloadUrl;
-                            const contentDisposition = response.headers.get('Content-Disposition');
-                            let filename = 'book.pdf';
-                            if (contentDisposition && contentDisposition.indexOf('attachment') !== -1) {
-                                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-                                const matches = filenameRegex.exec(contentDisposition);
-                                if (matches != null && matches[1]) {
-                                    filename = matches[1].replace(/['"]/g, '');
-                                }
-                            }
-                            a.download = filename;
+                            // Use the bookName dataset for filename, fallback to generic
+                            a.download = bookName ? `${bookName}.pdf` : 'book.pdf';
                             document.body.appendChild(a);
                             a.click();
                             a.remove();
@@ -283,7 +280,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             console.log('Attempting upload with token:', authToken); // Log token before upload
             try {
-                const response = await fetch(`${BASE_URL}/upload-book`, {
+                // Updated API endpoint to Netlify Function
+                const response = await fetch(`${BASE_URL}/.netlify/functions/upload-book`, { // Assuming an upload-book function
                     method: 'POST',
                     body: formData,
                     headers: {

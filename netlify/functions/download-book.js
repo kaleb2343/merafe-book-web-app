@@ -1,42 +1,41 @@
 // netlify/functions/download-book.js
 
+// Import Supabase client and Firebase Admin SDK (for auth only)
+const { createClient } = require('@supabase/supabase-js');
 const admin = require('firebase-admin');
-// Needed for stream functionality if using response.pipe()
-const { getStorage } = require('firebase-admin/storage'); 
 
-// Initialize Firebase Admin SDK if not already initialized
+// Path to your service account key file for Firebase Admin SDK (for auth verification)
+const serviceAccount = require('../serviceAccountKey.json');
+
+// Initialize Firebase Admin SDK if it hasn't been initialized already.
+// This is ONLY for verifying user authentication tokens.
 if (!admin.apps.length) {
     try {
         admin.initializeApp({
-            credential: admin.credential.cert({
-                projectId: process.env.FIREBASE_PROJECT_ID,
-                privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            }),
-            // Initialize Firebase Storage bucket for your project
-            // Replace 'your-project-id.appspot.com' with your actual storage bucket URL
-            // You can find this in your Firebase Console -> Storage -> Files tab
-            storageBucket: process.env.FIREBASE_STORAGE_BUCKET // e.g., "my-merafe-books.appspot.com"
+            credential: admin.credential.cert(serviceAccount),
+            projectId: process.env.FIREBASE_PROJECT_ID,
         });
-        console.log('Firebase Admin SDK initialized for download-book.');
+        console.log('Firebase Admin SDK initialized successfully for download-book (auth only).');
     } catch (error) {
         console.error('Firebase Admin SDK initialization error for download-book:', error);
     }
 }
 
-const db = admin.firestore();
-const bucket = getStorage().bucket(); // Get the default storage bucket
+// Initialize Supabase client
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 exports.handler = async (event, context) => {
     // Enable CORS for preflight OPTIONS requests
     if (event.httpMethod === 'OPTIONS') {
         return {
-            statusCode: 204, // No content for preflight
+            statusCode: 204,
             headers: {
-                'Access-Control-Allow-Origin': '*', // IMPORTANT: Restrict this to your Netlify domain in production
+                'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type, x-auth-token',
-                'Access-Control-Max-Age': '86400', // Cache preflight response for 24 hours
+                'Access-Control-Max-Age': '86400',
             },
             body: '',
         };
@@ -58,14 +57,11 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        // Verify the auth token. This ensures only logged-in users can download.
-        // If your original server.js didn't do this, you might remove it, but it's good practice.
-        await admin.auth().verifyIdToken(authToken); // This will throw an error if the token is invalid
+        // Verify the user's Firebase Auth token
+        await admin.auth().verifyIdToken(authToken);
 
         // Extract book ID from the path (e.g., /download-book/BOOK_ID)
-        const bookId = event.path.split('/').pop(); // Gets the last segment of the path
-
-        // Get filename from query parameters, if available. For the frontend to suggest a filename.
+        const bookId = event.path.split('/').pop();
         const filename = event.queryStringParameters?.filename || 'download.pdf';
 
         if (!bookId) {
@@ -75,39 +71,29 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // Fetch book data from Firestore to get the PDF path
-        const bookDoc = await db.collection('books').doc(bookId).get();
+        // Fetch book data from Supabase to get the PDF download URL
+        const { data: bookData, error: fetchError } = await supabase
+            .from('books')
+            .select('pdfDownloadUrl, pdfPath') // Select only the necessary columns
+            .eq('id', bookId)
+            .single(); // Expecting one row
 
-        if (!bookDoc.exists) {
+        if (fetchError || !bookData || !bookData.pdfDownloadUrl) {
+            console.error('Supabase fetch book for download error:', fetchError);
             return {
                 statusCode: 404,
-                body: JSON.stringify({ message: 'Book not found.' }),
+                body: JSON.stringify({ message: 'PDF file not found for this book.' }),
             };
         }
 
-        const bookData = bookDoc.data();
-        const pdfStoragePath = bookData.pdfPath; // This path should be the Firebase Storage path, e.g., 'pdfs/book123.pdf'
+        // The public URL is already stored in pdfDownloadUrl from upload-book.js
+        // We can just redirect the client to this public URL.
+        const pdfUrl = bookData.pdfDownloadUrl;
 
-        if (!pdfStoragePath) {
-            return {
-                statusCode: 404,
-                body: JSON.stringify({ message: 'PDF file not found for this book in Storage.' }),
-            };
-        }
-
-        // Generate a signed URL for the file in Firebase Storage
-        // This URL allows direct download by the client without passing through the function.
-        const [url] = await bucket.file(pdfStoragePath).getSignedUrl({
-            action: 'read',
-            expires: Date.now() + 15 * 60 * 1000, // URL valid for 15 minutes
-        });
-
-        // Redirect the client to the signed URL to initiate download.
-        // Netlify Functions support redirects.
         return {
             statusCode: 302, // 302 Found or 307 Temporary Redirect
             headers: {
-                'Location': url,
+                'Location': pdfUrl, // Redirect to the public Supabase Storage URL
                 'Content-Disposition': `attachment; filename="${filename}"`, // Suggests download name
                 'Access-Control-Allow-Origin': '*', // IMPORTANT: Adjust this to your Netlify domain in production
                 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -117,8 +103,7 @@ exports.handler = async (event, context) => {
         };
 
     } catch (error) {
-        console.error('Netlify function download-book error:', error);
-        // If token verification fails, it will be caught here
+        console.error('Netlify function download-book general error:', error);
         if (error.code === 'auth/id-token-expired' || error.code === 'auth/argument-error') {
             return {
                 statusCode: 401,
@@ -127,7 +112,7 @@ exports.handler = async (event, context) => {
         }
         return {
             statusCode: 500,
-            body: JSON.stringify({ message: 'Internal server error during download.' }),
+            body: JSON.stringify({ message: `Internal server error during download: ${error.message}` }),
         };
     }
 };
