@@ -11,21 +11,32 @@ const Busboy = require('busboy'); // Make sure this is installed via `npm instal
 // Ensures it's initialized only once.
 if (!admin.apps.length) {
     try {
+        // Ensure the private key is correctly parsed by replacing escaped newlines.
+        const firebasePrivateKey = process.env.FIREBASE_PRIVATE_KEY ?
+                                   process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') :
+                                   ''; // Default to empty string if undefined
+
+        if (!firebasePrivateKey) {
+            console.error('FIREBASE_PRIVATE_KEY environment variable is empty or undefined.');
+            throw new Error('Firebase Private Key is not set or invalid.'); // Throw to catch in outer block
+        }
+
         admin.initializeApp({
             credential: admin.credential.cert({
                 projectId: process.env.FIREBASE_PROJECT_ID,
                 clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+                privateKey: firebasePrivateKey, // Use the processed variable
             }),
         });
         console.log('Firebase Admin SDK initialized successfully for upload-book (auth only).');
     } catch (error) {
         console.error('Firebase Admin SDK initialization error for upload-book:', error);
-        // Log the full error object for debugging initialization issues
         console.error('Full Firebase Admin SDK init error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        // IMPORTANT: If initialization fails, you might want to re-throw or handle it more explicitly
+        // to prevent the function from proceeding with uninitialized Firebase services.
+        throw error; // Re-throw to propagate the initialization error
     }
 }
-
 // Initialize Supabase client for database and object storage operations.
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
