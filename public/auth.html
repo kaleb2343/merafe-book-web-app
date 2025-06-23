@@ -6,6 +6,38 @@
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64," />
     <link rel="stylesheet" href="auth.css">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+    <!-- Firebase Client SDK Initialization Script -->
+    <!-- This MUST be placed before auth.js or any script that uses window.auth -->
+    <script type="module">
+      // Import the necessary Firebase client SDK modules
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+      import { getAuth, signInWithCustomToken, createUserWithEmailAndPassword, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
+      import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-analytics.js"; // Include if you want analytics
+
+      // Your web app's Firebase configuration (same as used in index.html)
+      const firebaseConfig = {
+        apiKey: "AIzaSyCkF55VhbjlHSffkX5K40mazQxpfWZFl-0",
+        authDomain: "my-merafe-books.firebaseapp.com",
+        projectId: "my-merafe-books",
+        storageBucket: "my-merafe-books.firebasestorage.app",
+        messagingSenderId: "969903456042",
+        appId: "1:969903456042:web:5205e9cdd09d9acdb66853",
+        measurementId: "G-YR97H63305" // Optional, if you're using Analytics
+      };
+
+      // Initialize Firebase app
+      const app = initializeApp(firebaseConfig);
+
+      // Initialize Analytics (optional)
+      const analytics = getAnalytics(app); 
+
+      // Get the Auth service and make it globally accessible for your JS files
+      window.auth = getAuth(app);
+      window.signOutFirebase = signOut; // Make signOut available globally for logout logic
+      console.log("Firebase client-side SDK initialized and auth object available.");
+    </script>
+
   </head>
   <body>
     <div class="relative flex size-full min-h-screen flex-col bg-white group/design-root overflow-x-hidden">
