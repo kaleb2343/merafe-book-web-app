@@ -4,23 +4,32 @@ const admin = require('firebase-admin');
 
 // Initialize Firebase Admin SDK using environment variables for authentication
 // This block ensures the Admin SDK is initialized only once across function invocations.
+// Initialize Firebase Admin SDK for authentication token verification.
+// Ensures it's initialized only once per function instance lifecycle.
 if (!admin.apps.length) {
     try {
+        // Ensure the private key is correctly parsed by replacing escaped newlines.
+        const firebasePrivateKey = process.env.FIREBASE_PRIVATE_KEY ?
+                                   process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') :
+                                   ''; // Default to empty string if undefined
+
+        if (!firebasePrivateKey) {
+            console.error('FIREBASE_PRIVATE_KEY environment variable is empty or undefined for login.js.');
+            throw new Error('Firebase Private Key is not set or invalid for login function.'); // Throw to catch in outer block
+        }
+
         admin.initializeApp({
             credential: admin.credential.cert({
-                // Project ID, Client Email, and Private Key are retrieved from Netlify environment variables
                 projectId: process.env.FIREBASE_PROJECT_ID,
                 clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                // The private key string often contains escaped newlines (\\n).
-                // .replace(/\\n/g, '\n') converts these to actual newline characters, which Firebase requires.
-                privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+                privateKey: firebasePrivateKey, // Use the processed variable
             }),
         });
         console.log('Firebase Admin SDK initialized successfully for login (auth only, from env vars).');
     } catch (error) {
-        // Log any errors during Firebase Admin SDK initialization.
-        // This is crucial for debugging deployment issues related to credentials.
         console.error('Firebase Admin SDK initialization error for login:', error);
+        console.error('Full Firebase Admin SDK init error object for login:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        throw error; // Re-throw to propagate the initialization error
     }
 }
 
