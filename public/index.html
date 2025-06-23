@@ -7,61 +7,23 @@
     <link rel="stylesheet" href="index.css">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <style>
-      /* Basic styles for the modal overlay and content */
-      .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 50; /* Ensure it's on top of other content */
-      }
-      .modal-content {
-        background-color: white;
-        padding: 2rem;
+      /* Styles for the book cards (from your existing CSS) */
+      .book-card {
+        background-color: #f9f9f9; /* Light background for cards */
+        border: 1px solid #e0e0e0;
         border-radius: 0.5rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        width: 90%;
-        max-width: 500px;
-        position: relative;
+        padding: 1rem;
+      }
+      .dark-theme .book-card {
+        background-color: #333;
+        color: #f9f9f9;
+        border-color: #555;
+      }
+      .dark-theme p {
+        color: inherit; /* Ensure text color inherits from parent */
       }
     </style>
-
-    <!-- Firebase Client SDK Initialization Script -->
-    <!-- This MUST be placed before home page.js or any script that uses window.auth -->
-    <script type="module">
-      // Import the necessary Firebase client SDK modules
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
-      import { getAuth, signInWithCustomToken, createUserWithEmailAndPassword, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
-      import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-analytics.js"; // Include if you want analytics
-
-      // Your web app's Firebase configuration
-      const firebaseConfig = {
-        apiKey: "AIzaSyC13DPfeaXlHLU2ymBhYtWDUEbO2l2JMrI",
-        authDomain: "my-merafe-books.firebaseapp.com",
-        projectId: "my-merafe-books",
-        storageBucket: "my-merafe-books.firebasestorage.app",
-        messagingSenderId: "969903456042",
-        appId: "1:969903456042:web:5205e9cdd09d9acdb66853",
-        measurementId: "G-YR97H63305" // Optional, if you're using Analytics
-      };
-
-      // Initialize Firebase app
-      const app = initializeApp(firebaseConfig);
-
-      // Initialize Analytics (optional)
-      const analytics = getAnalytics(app); 
-
-      // Get the Auth service and make it globally accessible for your JS files
-      window.auth = getAuth(app);
-      window.signOutFirebase = signOut; // Make signOut available globally for logout logic
-      console.log("Firebase client-side SDK initialized and auth object available.");
-    </script>
-
+    <!-- home page.js will fetch and display books without auth -->
     <script type="module" src="home page.js" defer></script>
   </head>
   <body>
@@ -100,43 +62,21 @@
                 />
               </div>
             </label>
-            <!-- profile-icon (now SVG) and its existing click listener -->
-            <div
-              id="profile-icon"
-              class="flex items-center justify-center rounded-full size-10 cursor-pointer bg-blue-700 text-white hover:bg-blue-800 transition duration-300"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
-                  <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clip-rule="evenodd" />
-              </svg>
-            </div>
+            <!-- Profile icon removed as login/logout is no longer active -->
           </div>
         </header>
         <div class="px-40 flex flex-1 justify-center py-5">
           <div class="layout-content-container flex flex-col max-w-[960px] flex-1">
-            <h2 class="text-[#141414] text-[22px] font-bold leading-tight tracking-[0.015em] px-4 pb-3 pt-5">New Releases</h2>
-            <!-- Adjusted gap to gap-2 -->
+            <h2 class="text-[#141414] text-[22px] font-bold leading-tight tracking-[0.015em] px-4 pb-3 pt-5">All Books</h2>
             <div id="new-releases-books" class="grid grid-cols-[repeat(auto-fit,minmax(158px,1fr))] gap-2 p-4">
               <!-- Book cards will be dynamically loaded here by home page.js -->
-              <!-- The "Add your own book" card will also be dynamically added if the user is logged in -->
-              <div class="flex flex-col gap-3 pb-3 h-full justify-between book-card add-book-card hidden">
-                <div class="flex w-full bg-center bg-no-repeat aspect-[3/4] bg-cover rounded-xl justify-center items-center add-book-image-placeholder">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus text-gray-400">
-                    <path d="M12 5v14"></path>
-                    <path d="M5 12h14"></path>
-                  </svg>
-                </div>
-                <p class="book-title text-[#141414] text-left text-base font-medium leading-normal">Add your own book to collection</p>
-                <button class="mt-2 w-full border border-[#141414] text-[#141414] py-1 px-2 rounded-md text-xs font-medium hover:bg-[#141414] hover:text-white transition-colors duration-200">
-                  Add Book
-                </button>
-              </div>
+              <!-- The "Add your own book" card has been removed -->
             </div>
           </div>
         </div>
         <footer class="flex justify-center">
           <div class="flex max-w-[960px] flex-1 flex-col">
             <footer class="flex flex-wrap items-center justify-center gap-4 px-5 py-5 text-center">
-              <!-- UPDATED: Links to sections within info.html -->
               <a class="text-[#757575] text-base font-normal leading-normal min-w-40" href="privacy and policy.html">About</a>
               <a class="text-[#757575] text-base font-normal leading-normal min-w-40" href="privacy and policy.html">Privacy Policy</a>
               <a class="text-[#757575] text-base font-normal leading-normal min-w-40" href="privacy and policy.html">Terms of Service</a>
@@ -148,37 +88,6 @@
         </footer>
       </div>
     </div>
-
-    <div id="add-book-modal" class="modal-overlay hidden">
-      <div class="modal-content">
-        <h2 class="text-xl font-bold mb-4">Add New Book</h2>
-        <form id="add-book-form" class="space-y-4">
-          <div>
-            <label for="book-name" class="block text-sm font-medium text-gray-700">Book Name</label>
-            <input type="text" id="book-name" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required>
-          </div>
-          <div>
-            <label for="book-author" class="block text-sm font-medium text-gray-700">Author Name</label>
-            <input type="text" id="book-author" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
-          </div>
-          <div>
-            <label for="book-genre" class="block text-sm font-medium text-gray-700">Genre</label>
-            <input type="text" id="book-genre" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
-          </div>
-          <div>
-            <label for="cover-image-file" class="block text-sm font-medium text-gray-700">Cover Image (158x210 recommended)</label>
-            <input type="file" id="cover-image-file" class="mt-1 block w-full text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-[#141414] hover:file:bg-gray-100" accept="image/*">
-          </div>
-          <div>
-            <label for="pdf-file" class="block text-sm font-medium text-gray-700">PDF File</label>
-            <input type="file" id="pdf-file" class="mt-1 block w-full text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-[#141414] hover:file:bg-gray-100" accept="application/pdf">
-          </div>
-          <div class="flex justify-end gap-2">
-            <button type="button" id="close-modal-button" class="py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
-            <button type="submit" class="py-2 px-4 bg-[#141414] text-white rounded-md text-sm font-medium hover:bg-[#252525]">Upload Book</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- The "Add New Book" modal HTML has been removed -->
   </body>
 </html>
