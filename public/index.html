@@ -6,7 +6,6 @@
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64," />
     <link rel="stylesheet" href="index.css">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script type="module" src="home page.js" defer></script>
     <style>
       /* Basic styles for the modal overlay and content */
       .modal-overlay {
@@ -31,6 +30,39 @@
         position: relative;
       }
     </style>
+
+    <!-- Firebase Client SDK Initialization Script -->
+    <!-- This MUST be placed before home page.js or any script that uses window.auth -->
+    <script type="module">
+      // Import the necessary Firebase client SDK modules
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+      import { getAuth, signInWithCustomToken, createUserWithEmailAndPassword, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
+      import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-analytics.js"; // Include if you want analytics
+
+      // Your web app's Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyCkF55VhbjlHSffkX5K40mazQxpfWZFl-0",
+        authDomain: "my-merafe-books.firebaseapp.com",
+        projectId: "my-merafe-books",
+        storageBucket: "my-merafe-books.firebasestorage.app",
+        messagingSenderId: "969903456042",
+        appId: "1:969903456042:web:5205e9cdd09d9acdb66853",
+        measurementId: "G-YR97H63305" // Optional, if you're using Analytics
+      };
+
+      // Initialize Firebase app
+      const app = initializeApp(firebaseConfig);
+
+      // Initialize Analytics (optional)
+      const analytics = getAnalytics(app); 
+
+      // Get the Auth service and make it globally accessible for your JS files
+      window.auth = getAuth(app);
+      window.signOutFirebase = signOut; // Make signOut available globally for logout logic
+      console.log("Firebase client-side SDK initialized and auth object available.");
+    </script>
+
+    <script type="module" src="home page.js" defer></script>
   </head>
   <body>
     <div class="relative flex size-full min-h-screen flex-col bg-white group/design-root overflow-x-hidden">
@@ -73,9 +105,9 @@
               id="profile-icon"
               class="flex items-center justify-center rounded-full size-10 cursor-pointer bg-blue-700 text-white hover:bg-blue-800 transition duration-300"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
-                    <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clip-rule="evenodd" />
-                </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                  <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clip-rule="evenodd" />
+              </svg>
             </div>
           </div>
         </header>
