@@ -15,7 +15,8 @@
         "busboy": "^1.6.0",       
         "cors": "^2.8.5",
         "firebase": "^11.9.1",
-        "firebase-admin": "^13.4.0"
+        "firebase-admin": "^13.4.0",
+        "node-fetch": "^2.6.7"
       }
     }
     
