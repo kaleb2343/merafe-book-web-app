@@ -3,26 +3,30 @@
 const admin = require('firebase-admin');
 
 // Initialize Firebase Admin SDK using environment variables for authentication
-// This block ensures the Admin SDK is initialized only once across function invocations.
-// Initialize Firebase Admin SDK for authentication token verification.
-// Ensures it's initialized only once per function instance lifecycle.
+// This block ensures the Admin SDK is initialized only once per function instance lifecycle.
 if (!admin.apps.length) {
     try {
-        // Ensure the private key is correctly parsed by replacing escaped newlines.
-        const firebasePrivateKey = process.env.FIREBASE_PRIVATE_KEY ?
-                                   process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') :
-                                   ''; // Default to empty string if undefined
-
-        if (!firebasePrivateKey) {
+        // Retrieve and DECODE the Base64 encoded private key.
+        const encodedPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
+        if (!encodedPrivateKey) {
             console.error('FIREBASE_PRIVATE_KEY environment variable is empty or undefined for login.js.');
-            throw new Error('Firebase Private Key is not set or invalid for login function.'); // Throw to catch in outer block
+            throw new Error('Firebase Private Key environment variable is missing or empty.');
+        }
+
+        // Decode the Base64 string back to the original private key string
+        const firebasePrivateKey = Buffer.from(encodedPrivateKey, 'base64').toString('utf8');
+        
+        // Ensure the decoded key is not empty, though Base64 decoding should handle this
+        if (!firebasePrivateKey.trim()) { // .trim() to check for empty string after decoding
+            console.error('Decoded Firebase Private Key is empty or whitespace for login.js.');
+            throw new Error('Decoded Firebase Private Key is invalid.');
         }
 
         admin.initializeApp({
             credential: admin.credential.cert({
                 projectId: process.env.FIREBASE_PROJECT_ID,
                 clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                privateKey: firebasePrivateKey, // Use the processed variable
+                privateKey: firebasePrivateKey, // Use the DECODED private key
             }),
         });
         console.log('Firebase Admin SDK initialized successfully for login (auth only, from env vars).');
@@ -53,7 +57,6 @@ exports.handler = async (event, context) => {
             userRecord = await admin.auth().getUserByEmail(email);
         } catch (error) {
             // If user is not found, return a 404.
-            // Note: In a real-world scenario, you might want to be less specific for security.
             if (error.code === 'auth/user-not-found') {
                 return {
                     statusCode: 404,
@@ -78,12 +81,11 @@ exports.handler = async (event, context) => {
             headers: {
                 "Content-Type": "application/json",
                 // CORS header to allow requests from any origin.
-                // In production, consider restricting this to your specific Netlify domain.
                 'Access-Control-Allow-Origin': '*',
             },
             body: JSON.stringify({
                 message: 'Login successful!',
-                token: customToken,
+                token: customToken, // This is the custom token to be exchanged on client-side
                 userId: userRecord.uid,
                 userDisplayName: userRecord.displayName || 'User', // Fallback display name
             }),
@@ -98,3 +100,4 @@ exports.handler = async (event, context) => {
         };
     }
 };
+
