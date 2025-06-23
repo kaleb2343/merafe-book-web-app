@@ -6,8 +6,16 @@ const admin = require('firebase-admin');
 // This block ensures the Admin SDK is initialized only once per function instance lifecycle.
 if (!admin.apps.length) {
     try {
-        // Retrieve and DECODE the Base64 encoded private key.
+        // --- START DEBUG LOGGING ---
+        console.log('--- Firebase Admin SDK Init Debug ---');
+        console.log('Env var FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID);
+        console.log('Env var FIREBASE_CLIENT_EMAIL:', process.env.FIREBASE_CLIENT_EMAIL);
+        // DO NOT LOG THE FULL BASE64 KEY or DECODED KEY IN PRODUCTION!
+        // Logging first/last 20 chars of Base64 key for debug only.
         const encodedPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
+        console.log('Env var FIREBASE_PRIVATE_KEY (encoded, first 20 chars):', encodedPrivateKey ? encodedPrivateKey.substring(0, 20) + '...' + encodedPrivateKey.substring(encodedPrivateKey.length - 20) : 'Not set');
+        // --- END DEBUG LOGGING ---
+
         if (!encodedPrivateKey) {
             console.error('FIREBASE_PRIVATE_KEY environment variable is empty or undefined for login.js.');
             throw new Error('Firebase Private Key environment variable is missing or empty.');
@@ -16,8 +24,12 @@ if (!admin.apps.length) {
         // Decode the Base64 string back to the original private key string
         const firebasePrivateKey = Buffer.from(encodedPrivateKey, 'base64').toString('utf8');
         
+        // --- START DEBUG LOGGING ---
+        console.log('Decoded Firebase Private Key (first 50 chars):', firebasePrivateKey ? firebasePrivateKey.substring(0, 50) + '...' + firebasePrivateKey.substring(firebasePrivateKey.length - 50) : 'Empty after decode');
+        // --- END DEBUG LOGGING ---
+
         // Ensure the decoded key is not empty, though Base64 decoding should handle this
-        if (!firebasePrivateKey.trim()) { // .trim() to check for empty string after decoding
+        if (!firebasePrivateKey.trim()) {
             console.error('Decoded Firebase Private Key is empty or whitespace for login.js.');
             throw new Error('Decoded Firebase Private Key is invalid.');
         }
@@ -100,4 +112,3 @@ exports.handler = async (event, context) => {
         };
     }
 };
-
