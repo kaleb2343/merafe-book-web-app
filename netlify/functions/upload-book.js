@@ -21,6 +21,8 @@ if (!admin.apps.length) {
         console.log('Firebase Admin SDK initialized successfully for upload-book (auth only).');
     } catch (error) {
         console.error('Firebase Admin SDK initialization error for upload-book:', error);
+        // Log the full error object for debugging initialization issues
+        console.error('Full Firebase Admin SDK init error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
     }
 }
 
@@ -154,6 +156,7 @@ exports.handler = async (event, context) => {
     // Extract and validate authentication token from headers.
     const authToken = event.headers['x-auth-token'];
     if (!authToken) {
+        console.error('No authentication token provided in x-auth-token header.');
         return {
             statusCode: 401, // Unauthorized
             body: JSON.stringify({ message: 'Authentication token required.' }),
@@ -162,10 +165,22 @@ exports.handler = async (event, context) => {
 
     let decodedToken;
     try {
-        // Verify the Firebase Auth token using Firebase Admin SDK.
+        // Verify the user's Firebase Auth token
+        // Log part of the token for debugging (never log the full token in production!)
+        console.log('Attempting Firebase token verification for token start:', authToken ? authToken.substring(0, 10) + '...' : 'No token provided (unexpected at this point).');
+        
         decodedToken = await admin.auth().verifyIdToken(authToken);
+        
+        // Log success if verification passes
+        console.log('Token successfully verified for UID:', decodedToken.uid); 
     } catch (error) {
-        console.error('Token verification failed:', error);
+        // Log a more specific error message for easier identification in Netlify logs
+        console.error('Token verification failed inside upload-book.js:', error); 
+        
+        // Log the full error object, including non-enumerable properties like 'code', 'name', 'stack'
+        // This gives the most detailed error information from Firebase Admin SDK.
+        console.error('Full token verification error object (JSON stringified):', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+
         return {
             statusCode: 401, // Unauthorized
             body: JSON.stringify({ message: 'Invalid or expired authentication token. Please log in again.' }),
@@ -183,6 +198,7 @@ exports.handler = async (event, context) => {
 
         // Validate required fields.
         if (!bookName || !authorName || !genre || !pdfFile) {
+            console.error('Missing required book details or PDF file.');
             return {
                 statusCode: 400, // Bad Request
                 body: JSON.stringify({ message: 'Missing required book details or PDF file.' }),
@@ -196,7 +212,7 @@ exports.handler = async (event, context) => {
             genre: genre,
             bookDescription: bookDescription || '', // Use empty string if description is not provided.
             uploadedBy: decodedToken.uid, // Store the Firebase UID of the user who uploaded the book.
-            // 'uploadedAt' column in Supabase is configured to have a default timestamp, so no need to set it here.
+            // 'uploadedat' column in Supabase is configured to have a default timestamp, so no need to set it here.
             pdfPath: pdfFile.path, // Store the internal path/filename in Supabase Storage.
             pdfDownloadUrl: pdfFile.url, // Store the public direct URL for the PDF.
             // Use placeholder if no cover image is uploaded.
