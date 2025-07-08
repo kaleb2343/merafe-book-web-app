@@ -2,9 +2,9 @@
 <html>
   <head>
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="manifest" href="/site.webmanifest">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
     <link
@@ -19,160 +19,7 @@
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     
-    <!-- INLINED CSS from public/index.css -->
-    <style>
-      /* Basic styles for the modal overlay and content (kept for now, if any other modals are added) */
-      .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 50; /* Ensure it's on top of other content */
-      }
-      .modal-content {
-        background-color: white;
-        padding: 2rem;
-        border-radius: 0.5rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        width: 90%;
-        max-width: 500px;
-        position: relative;
-      }
-
-      /* General Body and Layout */
-      body {
-          font-family: "Public Sans", "Noto Sans", sans-serif; /* Set primary font */
-          margin: 0;
-          padding: 0;
-          background-color: #f2f2f2;
-          color: #333; 
-          transition: background-color 0.3s ease, color 0.3s ease;
-      }
-
-      /* Dark Theme specific styles */
-      body.dark-theme {
-          background-color: #1a1a1a;
-          color: #e0e0e0;
-      }
-
-      body.dark-theme h2,
-      body.dark-theme .book-title {
-          color: #f9f9f9;
-      }
-
-      /* Ensure the theme toggle icon is visible in dark mode */
-      body.dark-theme .text-\[\#141414\] {
-          color: #e0e0e0;
-      }
-
-      body.dark-theme [class*="text-[#757575]"],
-      body.dark-theme [class*="placeholder:text-[#757575]"],
-      body.dark-theme .text-gray-600,
-      body.dark-theme .text-gray-500,
-      body.dark-theme .text-gray-700 {
-          color: #b0b0b0; /* Lighter grey for readability in dark mode */
-      }
-
-      body.dark-theme .bg-white {
-          background-color: #2a2a2a; /* Darker background for main container */
-      }
-
-      body.dark-theme .bg-\[\#f2f2f2\],
-      body.dark-theme .form-input {
-          background-color: #3a3a3a; /* Darker input and search background */
-          color: #e0e0e0;
-          border-color: #555;
-      }
-
-      body.dark-theme .auth-button, /* These specific classes might not be used now, but kept for general theme */
-      body.dark-theme .bg-\[#141414\] {
-          background-color: #4a4a4a; /* Darker buttons */
-          border-color: #666;
-      }
-
-      body.dark-theme .hover\:bg-\[#141414\]:hover {
-          background-color: #666; /* Hover effect for buttons */
-      }
-
-      /* No specific .book-card styles as per request for a minimal look (no background/border) */
-
-      /* Removed .download-button custom CSS rules, using Tailwind directly */
-
-      /* Modal styles (from Tailwind components, adapted here) */
-      .modal-overlay {
-          /* Styles are mostly in the HTML's style tag for quick overview */
-          background-color: rgba(0, 0, 0, 0.6); /* Slightly darker overlay for emphasis */
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000; /* Ensure it's on top */
-      }
-
-      .modal-content {
-          background-color: #fff;
-          padding: 2rem;
-          border-radius: 0.75rem; /* More rounded */
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-          width: 90%;
-          max-width: 500px;
-          position: relative;
-          color: #141414; /* Ensure text is dark in modal */
-      }
-
-      body.dark-theme .modal-content {
-          background-color: #2a2a2a;
-          color: #e0e0e0;
-      }
-
-      body.dark-theme .modal-content label {
-          color: #e0e0e0;
-      }
-
-      body.dark-theme .modal-content input,
-      body.dark-theme .modal-content textarea {
-          background-color: #3a3a3a;
-          border-color: #555;
-          color: #e0e0e0;
-      }
-
-      body.dark-theme .modal-content button[type="button"] { /* Cancel button */
-          background-color: #4a4a4a;
-          border-color: #666;
-          color: #e0e0e0;
-      }
-
-      body.dark-theme .modal-content button[type="button"]:hover {
-          background-color: #5a5a5a;
-      }
-
-      body.dark-theme .modal-content button[type="submit"] { /* Upload button */
-          background-color: #555;
-          border-color: #666;
-      }
-
-      body.dark-theme .modal-content button[type="submit"]:hover {
-          background-color: #666;
-      }
-
-      /* Custom style for the image container background to blend with theme */
-      .book-image-container {
-        background-color: #e8e8e8; /* Default light background for blending */
-      }
-
-      body.dark-theme .book-image-container {
-        background-color: #333333; /* Dark background for blending */
-      }
-    </style>
+    <link rel="stylesheet" href="style.css">
   </head>
   <body>
     <div class="relative flex size-full min-h-screen flex-col bg-white group/design-root overflow-x-hidden">
@@ -203,7 +50,6 @@
           <div class="layout-content-container flex flex-col max-w-[960px] flex-1">
             <h2 class="text-[#141414] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">My Stories</h2>
             <div id="my-books" class="grid grid-cols-[repeat(auto-fit,minmax(158px,1fr))] gap-6 p-4">
-              <!-- "Stay Inside" Book Entry -->
               <div class="relative flex flex-col gap-3 pb-3 group">
                 <div
                   class="w-full h-64 bg-center bg-no-repeat rounded-lg relative book-image-container"
@@ -218,9 +64,6 @@
                   </a>
                 </div>
               </div>
-              <!-- End "Stay Inside" Book Entry -->
-
-              <!-- New Book Entry 1 -->
               <div class="relative flex flex-col gap-3 pb-3 group">
                 <div
                   class="w-full h-64 bg-center bg-no-repeat rounded-lg relative book-image-container"
@@ -235,9 +78,6 @@
                   </a>
                 </div>
               </div>
-              <!-- End New Book Entry 1 -->
-
-              <!-- New Book Entry 2 -->
               <div class="relative flex flex-col gap-3 pb-3 group">
                 <div
                   class="w-full h-64 bg-center bg-no-repeat rounded-lg relative book-image-container"
@@ -252,8 +92,6 @@
                   </a>
                 </div>
               </div>
-              <!-- End New Book Entry 2 -->
-
               <p class="text-gray-600 col-span-full text-center py-10">More stories coming soon!</p>
             </div>
           </div>
@@ -265,30 +103,6 @@
         </footer>
       </div>
     </div>
-    <script type="module">
-        document.addEventListener('DOMContentLoaded', () => {
-            // --- Theme Toggle Functionality ---
-            const themeToggle = document.getElementById('theme-toggle');
-            const body = document.body;
-
-            // Load saved theme preference
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme) {
-                body.classList.add(savedTheme);
-            }
-
-            if (themeToggle) {
-                themeToggle.addEventListener('click', () => {
-                    if (body.classList.contains('dark-theme')) {
-                        body.classList.remove('dark-theme');
-                        localStorage.setItem('theme', '');
-                    } else {
-                        body.classList.add('dark-theme');
-                        localStorage.setItem('theme', 'dark-theme');
-                    }
-                });
-            }
-        });
-    </script>
+    <script type="module" src="script.js"></script>
   </body>
 </html>
