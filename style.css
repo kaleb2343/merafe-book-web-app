@@ -1,6 +1,6 @@
 /* Basic styles for the modal overlay and content (kept for now, if any other modals are added) */
 .modal-overlay {
-  position: fixed;
+  position: fixed; 
   top: 0;
   left: 0;
   width: 100%;
