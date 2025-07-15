@@ -140,6 +140,9 @@ body.dark-theme .modal-content button[type="submit"] { /* Upload button */
 body.dark-theme .modal-content button[type="submit"]:hover {
     background-color: #666;
 }
+body.dark-theme #profile-icon img {
+    filter: invert(100%);
+}
 
 /* Custom style for the image container background to blend with theme */
 .book-image-container {

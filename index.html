@@ -27,7 +27,7 @@
         <header class="flex items-center justify-between whitespace-nowrap px-10 py-3">
           <div class="flex items-center gap-4 text-[#141414]">
             <div class="size-4">
-              <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6H42L36 24L42 42H6L12 24L6 6Z" fill="currentColor"></path></svg>
+              <svg viewBox="0 0 48 48" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M6 6H42L36 24L42 42H6L12 24L6 6Z" fill="currentColor"></path></svg>
             </div>
             <h2 class="text-[#141414] text-lg font-bold leading-tight tracking-[-0.015em]">ምእራፍ</h2>
           </div>
@@ -42,6 +42,11 @@
                     d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm72,88a64,64,0,1,1-64-64A64.07,64.07,0,0,1,192,128Zm-16,0a48,48,0,1,0-48,48A48.05,48.05,0,0,0,176,128ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"
                   ></path>
                 </svg>
+              </div>
+            </button>
+            <button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-[#f2f2f2] text-[#141414] gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5" id="profile-icon">
+              <div>
+                <img src="assets/profile-candidate.png" alt="Profile Icon" class="w-5 h-5 rounded-full object-cover">
               </div>
             </button>
           </div>
@@ -117,6 +122,33 @@
         </footer>
       </div>
     </div>
+
+    <div id="profile-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 shadow-lg w-90 max-w-md relative">
+        <button id="close-profile-modal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl font-bold">&times;</button>
+        <h3 class="text-center text-2xl font-bold mb-4 text-[#141414]">KALEB DAWIT</h3>
+        <h4 class="text-lg font-semibold mb-3 text-[#141414]">My Uploaded Books</h4>
+        <div class="space-y-4">
+          <div>
+            <p class="text-base font-medium text-[#141414]">STAY INSIDE</p>
+            <p class="text-sm text-[#757575]">He woke up, lost and trapped, seeking answers.</p>
+          </div>
+          <div>
+            <p class="text-base font-medium text-[#141414]">SHADOW MARCH</p>
+            <p class="text-sm text-[#757575]">A soldier haunted by war's inescapable shadows.</p>
+          </div>
+          <div>
+            <p class="text-base font-medium text-[#141414]">ALL THAT TIME</p>
+            <p class="text-sm text-[#757575]">Past secrets, present confusion.</p>
+          </div>
+          <div>
+            <p class="text-base font-medium text-[#141414]">LAST CASE, FIRST LIE</p>
+            <p class="text-sm text-[#757575]">The detective's last case, marred by deception.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="script.js"></script>
   </body>
 </html>

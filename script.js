@@ -20,4 +20,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // --- Profile Modal Functionality ---
+    const profileIcon = document.getElementById('profile-icon');
+    const profileModal = document.getElementById('profile-modal');
+    const closeProfileModal = document.getElementById('close-profile-modal');
+
+    if (profileIcon && profileModal && closeProfileModal) {
+        profileIcon.addEventListener('click', () => {
+            profileModal.classList.remove('hidden'); // Show the modal
+        });
+
+        closeProfileModal.addEventListener('click', () => {
+            profileModal.classList.add('hidden'); // Hide the modal
+        });
+
+        // Hide modal if clicked outside of it
+        profileModal.addEventListener('click', (e) => {
+            if (e.target === profileModal) {
+                profileModal.classList.add('hidden');
+            }
+        });
+    }
 });
