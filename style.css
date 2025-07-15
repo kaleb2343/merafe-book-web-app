@@ -12,6 +12,7 @@
   z-index: 50; /* Ensure it's on top of other content */
 }
 .modal-content {
+  /* These are placeholder values now, overridden below for profile modal */
   background-color: white;
   padding: 2rem;
   border-radius: 0.5rem;
@@ -47,6 +48,12 @@ body.dark-theme .text-\[\#141414\] {
     color: #e0e0e0;
 }
 
+/* Profile icon color inversion for dark theme */
+body.dark-theme #profile-icon img {
+    filter: invert(100%); /* Makes black images white */
+}
+
+
 body.dark-theme [class*="text-[#757575]"],
 body.dark-theme [class*="placeholder:text-[#757575]"],
 body.dark-theme .text-gray-600,
@@ -80,37 +87,40 @@ body.dark-theme .hover\:bg-\[#141414\]:hover {
 
 /* Removed .download-button custom CSS rules, using Tailwind directly */
 
-/* Modal styles (from Tailwind components, adapted here) */
-.modal-overlay {
-    /* Styles are mostly in the HTML's style tag for quick overview */
-    background-color: rgba(0, 0, 0, 0.6); /* Slightly darker overlay for emphasis */
+/* Modal overlay styles */
+#profile-modal { /* Targeting the specific modal overlay */
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000; /* Ensure it's on top */
+    right: 0;
+    bottom: 0;
+    /* The background color and z-index are already applied via Tailwind in HTML */
+    /* Remove redundant background-color: transparent and explicit z-index here */
+    /* Also remove width: auto; height: auto; which contradict inset-0 */
 }
 
-.modal-content {
-    background-color: #fff;
+/* Profile Modal Content (the actual card) Styles */
+#profile-modal > div { /* This targets the direct child div of #profile-modal which is the modal card itself */
+    position: absolute; /* Position absolutely within its fixed parent overlay */
+    top: 52px; /* Set top relative to the viewport/parent overlay */
+    right: 10px; /* Set right relative to the viewport/parent overlay */
+    background-color: rgba(255, 255, 255, 0.9); /* Slightly transparent white for light theme */
     padding: 2rem;
-    border-radius: 0.75rem; /* More rounded */
+    border-radius: 1.5rem; /* More rounded edges */
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
     width: 90%;
-    max-width: 500px;
-    position: relative;
-    color: #141414; /* Ensure text is dark in modal */
+    max-width: 300px; /* Make it narrower for a card */
+    /* Removed margin-left: auto; as absolute positioning dictates placement */
+    color: #141414; /* Default text color in modal */
+    transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition */
 }
 
-body.dark-theme .modal-content {
-    background-color: #2a2a2a;
-    color: #e0e0e0;
+body.dark-theme #profile-modal > div {
+    background-color: rgba(42, 42, 42, 0.95); /* Slightly transparent dark grey for dark theme, increased opacity */
+    color: #e0e0e0; /* Light text color in dark theme modal */
 }
 
+/* General modal content styles, if they apply to other potential modals */
 body.dark-theme .modal-content label {
     color: #e0e0e0;
 }
@@ -139,9 +149,6 @@ body.dark-theme .modal-content button[type="submit"] { /* Upload button */
 
 body.dark-theme .modal-content button[type="submit"]:hover {
     background-color: #666;
-}
-body.dark-theme #profile-icon img {
-    filter: invert(100%);
 }
 
 /* Custom style for the image container background to blend with theme */
